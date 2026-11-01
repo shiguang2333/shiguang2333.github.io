@@ -452,6 +452,28 @@
         .history-entry-meta b { color: #f59e0b; font-weight: 500; }
         .history-entry-result { margin-top: 6px; color: #fff7ed; font-size: 12px; line-height: 1.6; }
         .history-entry-count { margin-top: 3px; color: #a8a29e; font-size: 10px; }
+        /* Fit the card page to the viewport: no page scrolling, content stays centered. */
+        html, body { height: 100% !important; min-height: 0 !important; overflow: hidden !important; }
+        body { padding: 16px !important; }
+        #main-container { transform-origin: center; transition: opacity .5s, transform .5s, padding-bottom .45s cubic-bezier(.2,.8,.25,1); }
+        /* Stack the card label above its value so small cards never clip text. */
+        .card-item.active .card-content,
+        .card-item.revealed .card-content { flex-direction: column; justify-content: center; gap: 2px; }
+        .card-item.active .card-content > div:first-child,
+        .card-item.revealed .card-content > div:first-child { position: static; inset: auto; transform: none; order: -1; margin: 0; padding: 0; background: transparent; font-size: 8px; line-height: 1.2; }
+        .card-item .card-value { line-height: 1.25; text-align: center; overflow-wrap: anywhere; }
+        .modal-overlay > * { transform-origin: center; }
+        /* Entrance for the difficulty picker shown when the SP page opens. */
+        @keyframes sp-diff-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes sp-diff-panel-in { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes sp-diff-item-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        #diff-modal.is-entering { animation: sp-diff-backdrop-in .4s ease-out; }
+        #diff-modal.is-entering > div { animation: sp-diff-panel-in .5s cubic-bezier(.2,.8,.25,1) both; }
+        #diff-modal.is-entering > div > h2 { animation: sp-diff-item-in .45s .08s cubic-bezier(.2,.8,.25,1) backwards; }
+        #diff-modal.is-entering > div .flex.flex-col > .button { animation: sp-diff-item-in .45s cubic-bezier(.2,.8,.25,1) backwards; }
+        #diff-modal.is-entering > div .flex.flex-col > .button:nth-child(1) { animation-delay: .16s; }
+        #diff-modal.is-entering > div .flex.flex-col > .button:nth-child(2) { animation-delay: .24s; }
+        #diff-modal.is-entering > div .flex.flex-col > .button:nth-child(3) { animation-delay: .32s; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
@@ -757,8 +779,23 @@
             if (showDifficulty) {
                 const diffModal = document.getElementById('diff-modal');
                 diffModal.classList.remove('hidden', 'fade-out');
+                replayDiffEntrance();
             }
         }
+
+        function replayDiffEntrance() {
+            const diffModal = document.getElementById('diff-modal');
+            if (!diffModal || diffModal.classList.contains('hidden')) return;
+            diffModal.classList.remove('is-entering');
+            void diffModal.offsetWidth;
+            diffModal.classList.add('is-entering');
+            clearTimeout(replayDiffEntrance.timer);
+            replayDiffEntrance.timer = setTimeout(() => diffModal.classList.remove('is-entering'), 1200);
+            diffModal.querySelectorAll('.dots_border').forEach((el) => {
+                el.getAnimations().forEach((animation) => { animation.cancel(); animation.play(); });
+            });
+        }
+        window.replayDiffEntrance = replayDiffEntrance;
 
         for (let i = 0; i < 4; i++) document.getElementById(`c-${i}`).onclick = () => cardClick(i);
         quickDrawBtn.onclick = quickDraw;
@@ -816,6 +853,39 @@
                 requestAnimationFrame(() => resultCard.classList.add('show'));
             }, 400);
         }
+
+        const fitContainer = () => {
+            const container = document.getElementById('main-container');
+            if (!container) return;
+            container.style.scale = '';
+            const bodyStyle = getComputedStyle(document.body);
+            const availableWidth = document.documentElement.clientWidth - parseFloat(bodyStyle.paddingLeft) - parseFloat(bodyStyle.paddingRight);
+            const availableHeight = document.documentElement.clientHeight - parseFloat(bodyStyle.paddingTop) - parseFloat(bodyStyle.paddingBottom);
+            const scale = Math.min(1, availableWidth / container.offsetWidth, availableHeight / container.offsetHeight);
+            container.style.scale = scale < 0.999 ? String(scale) : '';
+        };
+        const fitOverlayPanels = () => {
+            document.querySelectorAll('.modal-overlay').forEach((overlay) => {
+                const panel = overlay.firstElementChild;
+                if (!panel) return;
+                panel.style.scale = '';
+                if (overlay.classList.contains('hidden') || !panel.offsetWidth) return;
+                const availableWidth = document.documentElement.clientWidth - 32;
+                const availableHeight = document.documentElement.clientHeight - 32;
+                const scale = Math.min(1, availableWidth / panel.offsetWidth, availableHeight / panel.offsetHeight);
+                panel.style.scale = scale < 0.999 ? String(scale) : '';
+            });
+        };
+        document.querySelectorAll('.modal-overlay').forEach((overlay) => {
+            new MutationObserver(fitOverlayPanels).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+        });
+        const overlayPanelObserver = new ResizeObserver(fitOverlayPanels);
+        document.querySelectorAll('.modal-overlay > *').forEach((panel) => overlayPanelObserver.observe(panel, { box: 'border-box' }));
+        new ResizeObserver(fitContainer).observe(document.getElementById('main-container'), { box: 'border-box' });
+        window.addEventListener('resize', () => { fitContainer(); fitOverlayPanels(); });
+        fitContainer();
+        fitOverlayPanels();
+        replayDiffEntrance();
     </script>
 </body>
 </html>
