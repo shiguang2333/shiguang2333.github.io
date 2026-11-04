@@ -23,6 +23,7 @@
   const GENDER_SYMBOLS = {
     男: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="14.5" r="5.5"/><path d="M13.4 10.6 20 4"/><path d="M15.2 4H20v4.8"/></svg>',
     女: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.6" r="5.2"/><path d="M12 13.8v6.8"/><path d="M8.6 17.2h6.8"/></svg>',
+    双: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="5.3"/><path d="M15.7 6.3 20 2.1"/><path d="M15.2 2.1H20v4.9"/><path d="M12 15.3v6.5"/><path d="M8.7 18.6h6.6"/></svg>',
   };
   const PALETTE = {
     violet:  ['#a78bfa', '#8b5cf6'],
@@ -319,10 +320,13 @@
                 ? ' is-male'
                 : item.name === '女'
                   ? ' is-female'
-                  : item.name === '主'
-                    ? ' is-dominant'
-                    : item.name === '贝' ? ' is-submissive' : '';
-              const symbol = GENDER_SYMBOLS[item.name] || esc(item.name);
+                  : item.name === '双'
+                    ? ' is-both'
+                    : item.name === '主'
+                      ? ' is-dominant'
+                      : item.name === '贝' ? ' is-submissive' : '';
+              const symbolGroup = item.group === 'self' || item.group === 'preference';
+              const symbol = symbolGroup ? (GENDER_SYMBOLS[item.name] || esc(item.name)) : esc(item.name);
               return `<button type="button" class="dual-choice${genderClass}${selected ? ' is-selected' : ''}" data-item="${item.id}" aria-label="${esc(group.label)}：${esc(item.name)}" aria-pressed="${selected ? 'true' : 'false'}"><span aria-hidden="true">${symbol}</span></button>`;
             }).join('')}
           </div>
@@ -522,7 +526,7 @@
     progressHint.textContent = done >= totalCategories
       ? '全部分类已填 · 记得保存摘要'
       : done === 0
-        ? `${totalCategories} 个分类 · 5 种填法`
+        ? `${totalCategories} 个分类 · ${new Set(cats.map((c) => c.input)).size} 种填法`
         : `还差 ${totalCategories - done} 类 · 随时可以停`;    progressTrack.setAttribute('aria-valuenow', String(percent));
     updateDockProgress();
   }

@@ -4,13 +4,12 @@ window.SHORT_CARD = {
   "name": "简短版",
   "version": "1.2.0",
   "adult": true,
-  "description": "10 个分类 / 102 项；性别含本人/偏好/属性三项单选；小瓶子共 3 档喜好，默认空瓶；强度与衣着为滑动档位；不设雷区",
-  "total": 102,
+  "description": "10 个分类 / 104 项；性别含本人/偏好/属性三项单选；小瓶子共 3 档喜好，默认空瓶；可接受强度与衣着接受度为滑动档位；不设雷区",
+  "total": 104,
   "inputTypes": {
-    "single": [
-      "关系"
-    ],
+    "single": [],
     "multi": [
+      "渴求关系",
       "节奏",
       "快感来源",
       "实践配合"
@@ -21,8 +20,8 @@ window.SHORT_CARD = {
       "姿势"
     ],
     "scale": [
-      "强度",
-      "衣着"
+      "可接受强度",
+      "衣着接受度"
     ],
     "dual": [
       "性别"
@@ -60,13 +59,13 @@ window.SHORT_CARD = {
   },
   "stats": {
     "categories": 10,
-    "items": 102,
+    "items": 104,
     "byInput": {
-      "single": 4,
-      "multi": 20,
+      "single": 0,
+      "multi": 24,
       "bottle": 64,
       "scale": 8,
-      "dual": 6
+      "dual": 8
     }
   },
   "categories": [
@@ -112,6 +111,14 @@ window.SHORT_CARD = {
           "groupLabel": "偏好性别"
         },
         {
+          "id": "s-gender-7",
+          "name": "双",
+          "selected": false,
+          "isNew": true,
+          "group": "preference",
+          "groupLabel": "偏好性别"
+        },
+        {
           "id": "s-gender-5",
           "name": "主",
           "selected": false,
@@ -126,13 +133,21 @@ window.SHORT_CARD = {
           "isNew": true,
           "group": "role",
           "groupLabel": "本人属性"
+        },
+        {
+          "id": "s-gender-8",
+          "name": "双",
+          "selected": false,
+          "isNew": true,
+          "group": "role",
+          "groupLabel": "本人属性"
         }
       ]
     },
     {
       "id": "relation",
-      "title": "关系",
-      "input": "single",
+      "title": "渴求关系",
+      "input": "multi",
       "color": "from-violet-400 to-violet-500",
       "solid": "text-violet-500",
       "bgSolid": "bg-violet-500",
@@ -148,7 +163,7 @@ window.SHORT_CARD = {
         },
         {
           "id": "s-relation-2",
-          "name": "惩戒",
+          "name": "短期体验",
           "selected": false,
           "source": "柿子卡"
         },
@@ -168,7 +183,7 @@ window.SHORT_CARD = {
     },
     {
       "id": "intensity",
-      "title": "强度",
+      "title": "可接受强度",
       "input": "scale",
       "orientation": "horizontal",
       "defaultIndex": 0,
@@ -647,7 +662,7 @@ window.SHORT_CARD = {
     },
     {
       "id": "clothing",
-      "title": "衣着",
+      "title": "衣着接受度",
       "input": "scale",
       "orientation": "vertical",
       "defaultIndex": 0,
@@ -672,7 +687,7 @@ window.SHORT_CARD = {
         },
         {
           "id": "s-clothing-3",
-          "name": "上或下裸",
+          "name": "半裸",
           "selected": false,
           "isNew": true
         },
@@ -739,12 +754,6 @@ window.SHORT_CARD = {
       ],
       "items": [
         {
-          "id": "s-pleasure-1",
-          "name": "实践中的痛感",
-          "selected": false,
-          "source": "柿子卡"
-        },
-        {
           "id": "s-pleasure-2",
           "name": "实践后的酸痛",
           "selected": false,
@@ -804,7 +813,6 @@ window.SHORT_CARD = {
       "id": "cooperation",
       "title": "实践配合",
       "input": "multi",
-      "maxSelections": 2,
       "color": "from-pink-400 to-pink-500",
       "solid": "text-pink-500",
       "bgSolid": "bg-pink-500",
@@ -814,7 +822,7 @@ window.SHORT_CARD = {
       "items": [
         {
           "id": "s-cooperation-1",
-          "name": "安静的抗刑",
+          "name": "安静挨罚",
           "selected": false,
           "source": "柿子卡"
         },
@@ -826,7 +834,7 @@ window.SHORT_CARD = {
         },
         {
           "id": "s-cooperation-3",
-          "name": "主动表达感受和需求",
+          "name": "主动请罚",
           "selected": false,
           "source": "柿子卡"
         },
@@ -838,9 +846,15 @@ window.SHORT_CARD = {
         },
         {
           "id": "s-cooperation-5",
-          "name": "戏精",
+          "name": "边打边聊",
           "selected": false,
-          "source": "柿子卡"
+          "isNew": true
+        },
+        {
+          "id": "s-cooperation-6",
+          "name": "猛烈挣扎",
+          "selected": false,
+          "isNew": true
         }
       ]
     }

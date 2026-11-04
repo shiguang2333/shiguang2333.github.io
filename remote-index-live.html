@@ -865,23 +865,33 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
             quickDrawBtn.disabled = false;
         }
 
+        const HISTORY_WINDOW = 6;
+        const REPEAT_DECAY = 0.2;
+        const NO_IMMEDIATE_REPEAT = new Set([0, 1]);
+
         function weightedPick(pool, index) {
             if (!pool.length) return '';
-            const recentValues = state.history.slice(0, 4).map((entry) => [entry.tool, entry.pose, entry.rawCount + '次', entry.area][index]);
-            const weights = pool.map((value) => {
+            const recentValues = state.history.slice(0, HISTORY_WINDOW).map((entry) => [entry.tool, entry.pose, entry.rawCount + '次', entry.area][index]);
+            let candidates = pool;
+            if (NO_IMMEDIATE_REPEAT.has(index) && state.history.length) {
+                const lastValue = [state.history[0].tool, state.history[0].pose][index];
+                const filtered = pool.filter((value) => value !== lastValue);
+                if (filtered.length) candidates = filtered;
+            }
+            const weights = candidates.map((value) => {
                 let weight = 1;
                 const repeatCount = recentValues.filter((previousValue) => value === previousValue).length;
-                if (repeatCount) weight *= Math.pow(0.42, repeatCount);
+                if (repeatCount) weight *= Math.pow(REPEAT_DECAY, repeatCount);
                 if (index === 3 && value === '屁股') weight *= 0.24;
                 return weight;
             });
             const total = weights.reduce((sum, weight) => sum + weight, 0);
             let cursor = Math.random() * total;
-            for (let i = 0; i < pool.length; i++) {
+            for (let i = 0; i < candidates.length; i++) {
                 cursor -= weights[i];
-                if (cursor <= 0) return pool[i];
+                if (cursor <= 0) return candidates[i];
             }
-            return pool[pool.length - 1];
+            return candidates[candidates.length - 1];
         }
 
         function resetDraw(showDifficulty = false) {
