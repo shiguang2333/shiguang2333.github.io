@@ -1154,12 +1154,14 @@
     }
 
     const footerY = y + 8;
-    const height = footerY + 44 + margin;
+    const siteUrl = 'shiguang2333.github.io';
+    const height = footerY + 76 + margin;
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = Math.max(height, 640);
     const ctx = canvas.getContext('2d');
+    const footerBase = footerY + (canvas.height - height);
     ctx.textBaseline = 'top';
 
     ctx.fillStyle = '#121110';
@@ -1313,14 +1315,18 @@
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(contentX, footerY - 16);
-    ctx.lineTo(contentX + contentW, footerY - 16);
+    ctx.moveTo(contentX, footerBase - 16);
+    ctx.lineTo(contentX + contentW, footerBase - 16);
     ctx.stroke();
     ctx.fillStyle = '#6f6a64';
     setFont(ctx, 17, 400);
-    ctx.fillText(`NOCTURNE ARCHIVE · 简短版 v${shortVersion} · 18+`, contentX, footerY);
+    ctx.fillText(`NOCTURNE ARCHIVE · 简短版 v${shortVersion} · 18+`, contentX, footerBase);
     ctx.textAlign = 'right';
-    ctx.fillText(new Date().toLocaleDateString('zh-CN'), contentX + contentW, footerY);
+    ctx.fillText(new Date().toLocaleDateString('zh-CN'), contentX + contentW, footerBase);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#a58a63';
+    setFont(ctx, 18, 500);
+    ctx.fillText(siteUrl, width / 2, footerBase + 32);
     ctx.textAlign = 'left';
 
     canvas.toBlob((blob) => {
