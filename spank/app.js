@@ -19,6 +19,11 @@
     intensity: ['#86efac', '#fbbf24', '#fb923c', '#f87171'],
     clothing: ['#93c5fd', '#67e8f9', '#fbbf24', '#f87171'],
   };
+  // 性别符号用内联 SVG 绘制，避免各机型系统字体 ♂ / ♀ 字形偏差导致的偏移
+  const GENDER_SYMBOLS = {
+    男: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="14.5" r="5.5"/><path d="M13.4 10.6 20 4"/><path d="M15.2 4H20v4.8"/></svg>',
+    女: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.6" r="5.2"/><path d="M12 13.8v6.8"/><path d="M8.6 17.2h6.8"/></svg>',
+  };
   const PALETTE = {
     violet:  ['#a78bfa', '#8b5cf6'],
     red:     ['#f87171', '#ef4444'],
@@ -317,7 +322,7 @@
                   : item.name === '主'
                     ? ' is-dominant'
                     : item.name === '贝' ? ' is-submissive' : '';
-              const symbol = item.name === '男' ? '♂' : item.name === '女' ? '♀' : item.name;
+              const symbol = GENDER_SYMBOLS[item.name] || esc(item.name);
               return `<button type="button" class="dual-choice${genderClass}${selected ? ' is-selected' : ''}" data-item="${item.id}" aria-label="${esc(group.label)}：${esc(item.name)}" aria-pressed="${selected ? 'true' : 'false'}"><span aria-hidden="true">${symbol}</span></button>`;
             }).join('')}
           </div>
