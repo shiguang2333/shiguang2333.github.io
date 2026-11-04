@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <meta name="description" content="SPANK 属性填涂卡 · 简短版 102 项（18+）。填写、保存与分享你的偏好与边界。">
+  <title>属性填涂卡 · NOCTURNE ARCHIVE</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c1c1c'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23d2ae72' stroke-width='2'/%3E%3Ctext x='32' y='38' font-size='18' text-anchor='middle' fill='%23d2ae72' font-family='sans-serif'%3E18+%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-glow bg-glow-a" aria-hidden="true"></div>
+  <div class="bg-glow bg-glow-b" aria-hidden="true"></div>
+
+  <!-- 主应用 -->
+  <div id="app" class="app-shell">
+    <main class="app-main">
+      <header class="hero">
+        <div class="hero-top">
+          <div class="hero-top-main">
+            <a id="backToApp" class="back-link" href="../?page=sp">← 返回抽卡</a>
+            <span class="eyebrow">NOCTURNE ARCHIVE · SPANK CARD</span>
+          </div>
+          <span id="versionTag" class="hero-meta">v1.2</span>
+        </div>
+        <h1>我的<em>属性</em>填涂卡</h1>
+
+        <div class="view-row">
+          <div class="view-switch" role="group" aria-label="填写视图">
+            <button type="button" class="view-option is-active" data-view="wizard" aria-pressed="true"><span aria-hidden="true">◎</span>逐类填写</button>
+            <button type="button" class="view-option" data-view="page" aria-pressed="false"><span aria-hidden="true">☰</span>整页填写</button>
+          </div>
+          <button id="resetBtn" class="ghost-button reset-button" type="button">重置</button>
+        </div>
+
+        <div class="progress-card">
+          <div class="progress-head">
+            <span>分类进度</span>
+            <span class="progress-number"><b id="progressCount">0</b> / <span id="progressTotal">9</span> 类</span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-label="分类填写进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <div class="progress-foot">
+            <span id="progressPercent">0%</span>
+            <span id="progressHint">10 个分类 · 5 种填法</span>
+          </div>
+        </div>
+      </header>
+
+      <nav id="catNav" class="cat-nav" aria-label="分类导航"></nav>
+
+      <div id="categories" class="categories"></div>
+
+      <section id="notesSection" class="notes-card" style="--accent:#d2ae72;--accent-strong:#c49b5f;--accent-soft:rgba(210,174,114,.12);--accent-line:rgba(210,174,114,.45)">
+        <header class="notes-head">
+          <span class="cat-bar" aria-hidden="true"></span>
+          <div>
+            <h2>其他</h2>
+          </div>
+        </header>
+        <div class="notes-grid">
+          <div class="field full">
+            <span>雷区</span>
+            <textarea id="hardLimits" maxlength="600" rows="5" aria-label="雷区" placeholder="任何不在卡面上的硬边界：不允许的动作、部位、语言……"></textarea>
+          </div>
+          <div class="field full">
+            <span>偏爱</span>
+            <textarea id="preferences" maxlength="600" rows="4" aria-label="偏爱" placeholder="偏爱的动作、语气、场景，或希望被照顾的细节……"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <footer class="page-foot">
+        <p id="footVersion">简短版 v1.2 · 100 项 · 数据仅保存在本机浏览器</p>
+        <p>18+ · 双方知情同意 · 这张卡不能替代真实沟通</p>
+        <p class="foot-mark">NOCTURNE ARCHIVE</p>
+      </footer>
+    </main>
+
+    <div class="dock">
+      <div class="dock-progress">
+        <span id="dockPrefix">第</span><b id="dockCount">1</b><span id="dockSuffix">/ <span id="dockTotal">9</span> 类</span>
+      </div>
+      <button id="prevBtn" class="ghost-button dock-prev" type="button">← 上一类</button>
+      <button id="summaryBtn" class="gold-button dock-button" type="button">下一类 <span aria-hidden="true">→</span></button>
+    </div>
+  </div>
+
+  <!-- 摘要 -->
+  <div id="summaryModal" class="modal" hidden>
+    <div class="modal-panel summary-panel" role="dialog" aria-modal="true" aria-labelledby="summaryTitle">
+      <header class="modal-head">
+        <div>
+          <p id="summaryEyebrow" class="eyebrow">SUMMARY · SHORT CARD</p>
+          <h2 id="summaryTitle">我的属性卡</h2>
+        </div>
+        <button class="icon-button" type="button" data-close aria-label="关闭摘要">×</button>
+      </header>
+      <div id="summaryViewSwitch" class="summary-view-switch" role="group" aria-label="摘要显示方式" hidden>
+        <span>显示</span>
+        <button type="button" class="is-active" data-summary-view="text" aria-pressed="true">文字</button>
+        <button type="button" data-summary-view="bottle" aria-pressed="false">小瓶子</button>
+      </div>
+      <div id="summaryContent" class="summary-content"></div>
+      <p id="summaryScrollHint" class="summary-scroll-hint" hidden>上下滑动查看全部 ↕</p>
+      <div class="summary-actions">
+        <button id="exportImageBtn" class="gold-button" type="button">导出图片</button>
+        <p class="summary-privacy">导出的图片会包含你的填写内容，请只分享给信任的人。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重置确认 -->
+  <div id="resetModal" class="modal" hidden>
+    <div class="modal-panel reset-panel" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+      <header class="modal-head">
+        <div>
+          <p class="eyebrow">RESET</p>
+          <h2 id="resetTitle">清空这张卡？</h2>
+        </div>
+        <button class="icon-button" type="button" data-close aria-label="关闭重置确认">×</button>
+      </header>
+      <p class="modal-copy">所有选项、瓶子等级和备注都会被清除，并回到逐类填写，且无法撤销。</p>
+      <div class="reset-actions">
+        <button class="ghost-button" type="button" data-close>取消</button>
+        <button id="confirmReset" class="danger-button" type="button">确认清空</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <div class="noscript">这个页面需要启用 JavaScript 才能填写。</div>
+  </noscript>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
