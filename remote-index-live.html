@@ -486,6 +486,328 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
 }
 .sp-redraw-button { margin-top: 6px; }
 
+/* 结果卡加罚入口：置于「重抽」与卡片底缘之间的视觉中心 */
+.result-card .content .front .front-content .sp-penalty-wrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: clamp(22px, 11%, 64px);
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+.sp-penalty-button {
+    pointer-events: auto;
+    min-width: 176px;
+    min-height: 50px;
+    padding: 0 32px;
+    border: 1px solid rgba(255, 235, 197, 0.72);
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f7e0b0 0%, #e2bd7d 42%, #c79a55 100%);
+    color: #241a0d;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-indent: 0.24em;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 12px 30px rgba(210, 174, 114, 0.35), 0 0 26px rgba(240, 210, 154, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+}
+.sp-penalty-button:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+    box-shadow: 0 14px 34px rgba(210, 174, 114, 0.42), 0 0 30px rgba(240, 210, 154, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.sp-penalty-button:active {
+    transform: translateY(1px);
+    filter: brightness(0.98);
+    box-shadow: 0 6px 18px rgba(210, 174, 114, 0.28), inset 0 2px 6px rgba(80, 50, 10, 0.28);
+}
+
+/* ---------- 加罚抽取弹窗 ---------- */
+#penalty-modal { z-index: 70; padding: clamp(10px, 2.6vw, 18px) !important; }
+#penalty-modal .penalty-panel {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    padding: clamp(18px, 4.5vw, 30px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--sp-radius-modal);
+    background:
+        radial-gradient(circle at 50% 0%, rgba(210, 174, 114, 0.14), transparent 58%),
+        #1e1b18;
+}
+.penalty-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.penalty-eyebrow { margin: 0; color: var(--sp-gold); font-size: 9px; letter-spacing: 0.28em; }
+.penalty-title { margin: 10px 0 2px; color: #f3d39a; font-size: 22px; font-weight: 600; letter-spacing: 0.08em; }
+.penalty-sub { margin: 0 0 16px; color: var(--sp-muted); font-size: 11px; letter-spacing: 0.05em; }
+.penalty-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; }
+.penalty-cards[hidden] { display: none; }
+.penalty-cards.is-merging .penalty-card {
+    transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.25, 1), opacity 0.4s ease;
+}
+.penalty-cards.is-merging .penalty-card:first-child {
+    transform: translateX(calc(50% + 5px)) scale(0.86);
+    opacity: 0;
+}
+.penalty-cards.is-merging .penalty-card:last-child {
+    transform: translateX(calc(-50% - 5px)) scale(0.86);
+    opacity: 0;
+}
+.penalty-card {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 150px;
+    padding: 16px 10px;
+    border: 1px solid rgba(210, 174, 114, 0.28);
+    border-radius: 16px;
+    background: rgba(28, 25, 22, 0.92);
+    color: var(--sp-muted);
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s;
+}
+.penalty-card[hidden] { display: none; }
+.penalty-card-label { position: relative; z-index: 1; }
+.penalty-card-display {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 84px;
+}
+.penalty-card-value { position: relative; z-index: 1; transition: opacity 0.12s ease; }
+.penalty-reel {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%);
+}
+.penalty-reel[hidden] { display: none; }
+.penalty-reel::after {
+    content: '';
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    top: 50%;
+    height: 28px;
+    transform: translateY(-50%);
+    border-top: 1px solid rgba(210, 174, 114, 0.3);
+    border-bottom: 1px solid rgba(210, 174, 114, 0.3);
+    background: linear-gradient(180deg, rgba(210, 174, 114, 0.05), rgba(210, 174, 114, 0.01));
+    pointer-events: none;
+}
+#penalty-modal.is-final .penalty-reel::after {
+    border-color: rgba(199, 92, 80, 0.45);
+    background: linear-gradient(180deg, rgba(199, 92, 80, 0.08), rgba(199, 92, 80, 0.02));
+}
+.penalty-reel-track {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    will-change: transform;
+    animation: penalty-reel-scroll linear infinite;
+}
+.penalty-reel-item {
+    height: 28px;
+    flex: 0 0 28px;
+    color: #f3d39a;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 28px;
+    white-space: nowrap;
+}
+.penalty-card.is-rolling .penalty-card-value { opacity: 0; }
+.penalty-card.is-rolling {
+    border-color: rgba(243, 211, 154, 0.9);
+    animation: penalty-roll-glow 0.8s ease-in-out infinite;
+}
+.penalty-card.is-rolling::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background: linear-gradient(115deg, transparent 32%, rgba(255, 240, 210, 0.14) 50%, transparent 68%);
+    transform: translateX(-130%);
+    animation: penalty-sweep 0.72s linear infinite;
+    pointer-events: none;
+}
+.penalty-card.is-revealed.is-settling {
+    animation: penalty-settle 0.38s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+@keyframes penalty-roll-glow {
+    0%, 100% { box-shadow: 0 0 12px rgba(210, 174, 114, 0.16), inset 0 0 0 rgba(210, 174, 114, 0); }
+    50% { box-shadow: 0 0 30px rgba(210, 174, 114, 0.4), inset 0 0 18px rgba(210, 174, 114, 0.09); }
+}
+@keyframes penalty-sweep {
+    to { transform: translateX(130%); }
+}
+@keyframes penalty-reel-scroll {
+    from { transform: translateY(0); }
+    to { transform: translateY(-50%); }
+}
+@keyframes penalty-settle {
+    0% { transform: scale(1.07); }
+    42% { transform: scale(0.95); }
+    72% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+.penalty-card:not(:disabled):hover { border-color: rgba(210, 174, 114, 0.6); background: rgba(210, 174, 114, 0.08); }
+.penalty-card:disabled:not(.is-revealed) { opacity: 0.45; cursor: default; }
+.penalty-card.is-revealed { cursor: default; }
+.penalty-card.is-rolling { border-color: rgba(243, 211, 154, 0.8); box-shadow: 0 0 22px rgba(210, 174, 114, 0.18); }
+.penalty-card.is-revealed {
+    border-color: rgba(243, 211, 154, 0.55);
+    background: linear-gradient(160deg, rgba(210, 174, 114, 0.14), rgba(28, 25, 22, 0.92));
+}
+.penalty-card-label { color: var(--sp-gold); font-size: 10px; letter-spacing: 0.22em; }
+.penalty-card-value {
+    color: #f3d39a;
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: center;
+    word-break: break-all;
+}
+.penalty-card.is-rolling .penalty-card-value { color: #fff1d0; }
+.penalty-card:disabled:not(.is-revealed) .penalty-card-value { color: var(--sp-muted); font-size: 12px; font-weight: 400; }
+.penalty-merge-card { width: 100%; margin-top: auto; }
+.penalty-merge-card.is-appearing { animation: penalty-merge-in 0.42s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+@keyframes penalty-merge-in {
+    0% { opacity: 0; transform: scale(0.72); }
+    60% { opacity: 1; transform: scale(1.03); }
+    100% { opacity: 1; transform: scale(1); }
+}
+.penalty-hint { margin: auto 0 0; color: var(--sp-muted); font-size: 10px; line-height: 1.6; text-align: center; }
+.penalty-finish { width: 100%; margin-top: 16px; }
+.penalty-finish[hidden] { display: none; }
+.penalty-finish:not([hidden]) { animation: penalty-finish-in 0.3s ease both; }
+@keyframes penalty-finish-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.penalty-actions {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    overflow: hidden;
+    max-height: 80px;
+    transition: opacity 0.24s ease, transform 0.24s ease, max-height 0.24s ease, margin-top 0.24s ease;
+}
+.penalty-actions[hidden] { display: none; }
+.penalty-actions.is-leaving { opacity: 0; transform: translateY(6px); max-height: 0; margin-top: 0; pointer-events: none; }
+
+/* 终极惩罚：红线警告态 */
+#penalty-modal.is-final { background: rgba(18, 6, 6, 0.78); }
+#penalty-modal.is-final .penalty-panel {
+    border-color: rgba(199, 92, 80, 0.48);
+    background:
+        radial-gradient(circle at 50% 0%, rgba(199, 92, 80, 0.2), transparent 58%),
+        #201918;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.64), 0 0 36px rgba(199, 92, 80, 0.18);
+}
+#penalty-modal.is-final .penalty-eyebrow { color: #f0a79c; }
+#penalty-modal.is-final .penalty-title { color: #ffb3a6; text-shadow: 0 0 18px rgba(199, 92, 80, 0.28); }
+#penalty-modal.is-final .penalty-sub { color: #e0aea4; }
+#penalty-modal.is-final .penalty-card {
+    border-color: rgba(199, 92, 80, 0.42);
+    background: linear-gradient(160deg, rgba(199, 92, 80, 0.1), rgba(40, 25, 23, 0.94));
+}
+#penalty-modal.is-final .penalty-card:not(:disabled):hover {
+    border-color: rgba(230, 130, 120, 0.75);
+    background: linear-gradient(160deg, rgba(199, 92, 80, 0.2), rgba(46, 28, 26, 0.94));
+}
+#penalty-modal.is-final .penalty-card.is-revealed {
+    border-color: rgba(240, 150, 140, 0.65);
+    background: linear-gradient(160deg, rgba(199, 92, 80, 0.2), rgba(40, 25, 23, 0.94));
+}
+#penalty-modal.is-final .penalty-card.is-rolling {
+    border-color: rgba(255, 150, 135, 0.9);
+    animation: penalty-final-glow 0.66s ease-in-out infinite;
+}
+#penalty-modal.is-final .penalty-card.is-rolling::after {
+    background: linear-gradient(115deg, transparent 32%, rgba(255, 170, 150, 0.18) 50%, transparent 68%);
+}
+#penalty-modal.is-final .penalty-card.is-revealed.is-settling {
+    animation: penalty-final-settle 0.5s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+@keyframes penalty-final-glow {
+    0%, 100% { box-shadow: 0 0 16px rgba(199, 92, 80, 0.28), inset 0 0 0 rgba(199, 92, 80, 0); }
+    50% { box-shadow: 0 0 42px rgba(199, 92, 80, 0.55), inset 0 0 26px rgba(199, 92, 80, 0.16); }
+}
+@keyframes penalty-final-settle {
+    0% { transform: scale(1.12); box-shadow: 0 0 48px rgba(199, 92, 80, 0.6); }
+    42% { transform: scale(0.94); }
+    70% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+}
+#penalty-modal.is-final .penalty-card-label { color: #f0a79c; }
+#penalty-modal.is-final .penalty-card-value { color: #ffc1b5; }
+#penalty-modal.is-final .penalty-reel-item { color: #ffc1b5; }
+#penalty-modal.is-final .penalty-card:disabled:not(.is-revealed) .penalty-card-value { color: #c99a92; }
+#penalty-modal.is-final .penalty-hint { color: #d9a79d; }
+#penalty-modal.is-final .penalty-finish {
+    border-color: rgba(230, 140, 125, 0.7);
+    background: linear-gradient(160deg, #d98878, #b85a4e);
+    color: #2a1512;
+    box-shadow: 0 10px 26px rgba(160, 60, 50, 0.28), 0 0 24px rgba(199, 92, 80, 0.18), inset 0 1px rgba(255, 255, 255, 0.25);
+}
+#penalty-modal.is-final .penalty-finish:hover {
+    border-color: rgba(245, 160, 145, 0.9);
+    background: linear-gradient(160deg, #e49788, #c4665a);
+    box-shadow: 0 12px 30px rgba(170, 70, 58, 0.34), 0 0 28px rgba(199, 92, 80, 0.26), inset 0 1px rgba(255, 255, 255, 0.3);
+}
+.penalty-action {
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s, filter 0.2s;
+}
+.penalty-action:active { transform: translateY(1px); filter: brightness(0.97); }
+.penalty-action-done {
+    border: 1px solid rgba(229, 197, 143, 0.72);
+    background: linear-gradient(160deg, #e0bd83, #c49b5f);
+    color: #201c18;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3), 0 0 20px rgba(201, 157, 85, 0.16), inset 0 1px rgba(255, 255, 255, 0.35);
+}
+.penalty-action-done:hover {
+    border-color: rgba(240, 214, 170, 0.9);
+    background: linear-gradient(160deg, #eccb93, #d3a96a);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34), 0 0 26px rgba(201, 157, 85, 0.24), inset 0 1px rgba(255, 255, 255, 0.4);
+}
+.penalty-action-fail {
+    border: 1px solid rgba(199, 92, 80, 0.55);
+    background: linear-gradient(160deg, rgba(199, 92, 80, 0.12), rgba(60, 34, 30, 0.5));
+    color: #f0a79c;
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.06);
+}
+.penalty-action-fail:hover {
+    border-color: rgba(220, 120, 105, 0.7);
+    background: linear-gradient(160deg, rgba(199, 92, 80, 0.2), rgba(72, 38, 33, 0.55));
+    color: #f6c0b6;
+}
+
 /* ---------- 历史 / 规则 ---------- */
 .history-modal {
     display: none;
@@ -584,6 +906,21 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
     .result-card .content .front .front-content { padding: 8px; }
     .result-card .content .front .front-content .description { padding: 14px 9px; gap: 6px; }
 }
+@media (max-height: 460px) {
+    #penalty-modal { padding: 8px !important; }
+    #penalty-modal .penalty-panel { padding: 10px 16px; }
+    .penalty-title { margin: 6px 0 2px; font-size: 20px; }
+    .penalty-sub { margin-bottom: 10px; }
+    .penalty-card { min-height: 110px; padding: 8px; gap: 6px; }
+    .penalty-card-display { height: 72px; }
+    .penalty-card-value { font-size: 17px; }
+    .penalty-reel-item { height: 24px; flex-basis: 24px; font-size: 15px; line-height: 24px; }
+    .penalty-reel::after { height: 24px; }
+    .penalty-hint { font-size: 9px; }
+    .penalty-finish { margin-top: 10px; min-height: 40px; }
+    .penalty-actions { margin-top: 10px; }
+    .penalty-action { min-height: 40px; }
+}
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.001ms !important;
@@ -599,13 +936,13 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         <div class="sp-diff-panel">
             <h2 class="sp-eyebrow sp-diff-title">选择惩罚程度</h2>
             <div class="sp-diff-list flex flex-col w-full items-center">
-                <button onclick="selectDiff(30, 50, 30)" class="button btn-white w-full" type="button">
+                <button onclick="selectDiff(30, 50, 30, 'light')" class="button btn-white w-full" type="button">
                     <span class="text_button">轻度</span>
                 </button>
-                <button onclick="selectDiff(50, 80, 60)" class="button btn-orange w-full" type="button">
+                <button onclick="selectDiff(50, 80, 60, 'medium')" class="button btn-orange w-full" type="button">
                     <span class="text_button">中度</span>
                 </button>
-                <button onclick="selectDiff(80, 110, 80)" class="button btn-red w-full" type="button">
+                <button onclick="selectDiff(80, 110, 80, 'heavy')" class="button btn-red w-full" type="button">
                     <span class="text_button">重度</span>
                 </button>
             </div>
@@ -656,6 +993,9 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
                             </div>
                             <button id="redraw-btn" type="button" class="sp-mini-button sp-redraw-button" onclick="event.stopPropagation(); resetDraw(true)">重抽</button>
                         </div>
+                        <div class="sp-penalty-wrap">
+                            <button id="penalty-btn" type="button" class="sp-penalty-button">进行加罚</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -672,6 +1012,45 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
                 <p><strong>加罚说明：</strong><br/>1. 报数/声小/报错/求饶 +5次。<br/>2. 乱动/遮挡/躲闪/喊疼 +10次。<br/>(上限50次加罚)</p>
             </div>
             <button id="close-modal" class="sp-modal-close" type="button">关闭</button>
+        </div>
+    </div>
+
+    <div id="penalty-modal" class="fixed inset-0 modal-overlay z-50 flex items-stretch justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="penalty-title">
+        <div class="sp-modal-panel penalty-panel">
+            <div class="penalty-head">
+                <p class="penalty-eyebrow">EXTRA PENALTY</p>
+            </div>
+            <h2 id="penalty-title" class="penalty-title">加罚抽取</h2>
+            <p id="penalty-difficulty" class="penalty-sub">当前程度：轻度</p>
+            <div id="penalty-cards" class="penalty-cards">
+                <button id="penalty-item-card" class="penalty-card" type="button" aria-label="抽取加罚项目">
+                    <span class="penalty-card-label">项目</span>
+                    <span class="penalty-card-display">
+                        <span id="penalty-item-value" class="penalty-card-value">点击抽取</span>
+                        <span id="penalty-item-reel" class="penalty-reel" aria-hidden="true" hidden></span>
+                    </span>
+                </button>
+                <button id="penalty-time-card" class="penalty-card" type="button" aria-label="抽取加罚时间" disabled>
+                    <span class="penalty-card-label">时间</span>
+                    <span class="penalty-card-display">
+                        <span id="penalty-time-value" class="penalty-card-value">先抽项目</span>
+                        <span id="penalty-time-reel" class="penalty-reel" aria-hidden="true" hidden></span>
+                    </span>
+                </button>
+            </div>
+            <button id="penalty-merge-card" class="penalty-card penalty-merge-card" type="button" aria-label="抽取后续惩罚" hidden>
+                <span class="penalty-card-label">后续惩罚</span>
+                <span class="penalty-card-display">
+                    <span id="penalty-merge-value" class="penalty-card-value">点击抽取</span>
+                    <span id="penalty-merge-reel" class="penalty-reel" aria-hidden="true" hidden></span>
+                </span>
+            </button>
+            <p id="penalty-hint" class="penalty-hint">点击卡片开始滚动，再次点击停牌</p>
+            <button id="penalty-finish" class="penalty-action penalty-action-done penalty-finish" type="button" hidden>已完成惩罚</button>
+            <div id="penalty-actions" class="penalty-actions" hidden>
+                <button id="penalty-done" class="penalty-action penalty-action-done" type="button">惩罚完成</button>
+                <button id="penalty-fail" class="penalty-action penalty-action-fail" type="button">未能完成</button>
+            </div>
         </div>
     </div>
 
@@ -718,7 +1097,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
 
         const HISTORY_KEY = 'sp-card-history-v1';
         const MAX_HISTORY = 12;
-        let state = { step: 0, results: [,,,], diff: {min: 50, max: 80, floor: 60}, isRolling: false, autoDrawing: false, currentCount: 0, history: loadHistory() };
+        let state = { step: 0, results: [,,,], diff: {min: 50, max: 80, floor: 60, key: 'medium'}, isRolling: false, autoDrawing: false, currentCount: 0, history: loadHistory() };
         const btn = document.getElementById('draw-btn');
         const quickDrawBtn = document.getElementById('quick-draw-btn');
         const container = document.getElementById('cards-container');
@@ -761,8 +1140,9 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
             historyModal.setAttribute('aria-hidden', 'true');
         }
 
-        function selectDiff(min, max, floor) {
-            state.diff = {min, max, floor};
+        function selectDiff(min, max, floor, key) {
+            const resolvedKey = key || (min === 30 ? 'light' : min === 80 ? 'heavy' : 'medium');
+            state.diff = {min, max, floor, key: resolvedKey};
             const modal = document.getElementById('diff-modal');
             modal.classList.add('fade-out');
             document.getElementById('main-container').classList.add('fade-in');
@@ -773,7 +1153,315 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         document.getElementById('history-btn').onclick = openHistory;
         document.getElementById('close-history').onclick = closeHistory;
         historyModal.onclick = (event) => { if (event.target === historyModal) closeHistory(); };
-        document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeHistory(); });
+        document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeHistory(); closePenaltyDraw(); } });
+
+        /* ---------- 加罚抽取（项目 + 时间） ---------- */
+        // 数据来源：Grok 表格.csv；基础区间整体 +20% 后四舍五入为整数分钟，在整数范围内均匀抽取
+        const PENALTY_TABLE = [
+            { name: '抱头罚跪', light: [8, 12], medium: [13, 17], heavy: [18, 25] },
+            { name: '举臂罚跪', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
+            { name: '跪姿顶物', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
+            { name: '跪姿持鞭', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
+            { name: '分腿罚跪', light: [6, 9], medium: [10, 13], heavy: [14, 18] },
+            { name: 'M开腿蹲', light: [2, 3], medium: [3.5, 4.5], heavy: [5, 7] },
+            { name: '分腿面壁', light: [8, 12], medium: [13, 16], heavy: [17, 22] },
+            { name: '扎马步', light: [2, 3], medium: [3.5, 4], heavy: [4.5, 6] },
+            { name: '背手踮脚', light: [3, 4], medium: [5, 6], heavy: [7, 10] },
+            { name: '扶墙撅臀', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
+            { name: '平举重物', light: [3, 4], medium: [5, 6], heavy: [7, 10] },
+            { name: '顶鞭面壁', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
+        ];
+        const DIFFICULTY_LABELS = { light: '轻度', medium: '中度', heavy: '重度' };
+        const PENALTY_RETRY_OPTIONS = [
+            '原加罚内容重新开始',
+            '原加罚内容翻倍',
+            '原抽打内容重新开始',
+            '原抽打内容减半再次执行',
+            '原加罚内容减半再次执行',
+            '按当前强度减一级重新抽卡',
+            '按当前强度加一级重新抽卡',
+        ];
+        const penaltyModal = document.getElementById('penalty-modal');
+        const penaltyItemCard = document.getElementById('penalty-item-card');
+        const penaltyTimeCard = document.getElementById('penalty-time-card');
+        const penaltyItemValue = document.getElementById('penalty-item-value');
+        const penaltyTimeValue = document.getElementById('penalty-time-value');
+        const penaltyHint = document.getElementById('penalty-hint');
+        const penaltyActions = document.getElementById('penalty-actions');
+        const penaltyCards = document.getElementById('penalty-cards');
+        const penaltyMergeCard = document.getElementById('penalty-merge-card');
+        const penaltyMergeValueEl = document.getElementById('penalty-merge-value');
+        const penaltyItemReel = document.getElementById('penalty-item-reel');
+        const penaltyTimeReel = document.getElementById('penalty-time-reel');
+        const penaltyMergeReel = document.getElementById('penalty-merge-reel');
+        const penaltyFinish = document.getElementById('penalty-finish');
+        const penaltyDone = document.getElementById('penalty-done');
+        const penaltyTitle = document.getElementById('penalty-title');
+        const penaltyDifficulty = document.getElementById('penalty-difficulty');
+        let penaltyItem = null;
+        let penaltyTime = null;
+        let penaltyRolling = null;
+        let penaltyRollTimer = null;
+        let penaltyRollValue = '';
+        let penaltyMerged = false;
+        let penaltyMergeRolling = false;
+        let penaltyMergeTimer = null;
+        let penaltyMergePick = '';
+        let penaltyMergeResult = null;
+        let penaltyUiTimers = [];
+
+        function penaltyLater(callback, delay) {
+            const timer = setTimeout(callback, delay);
+            penaltyUiTimers.push(timer);
+            return timer;
+        }
+
+        function clearPenaltyUiTimers() {
+            penaltyUiTimers.forEach((timer) => clearTimeout(timer));
+            penaltyUiTimers = [];
+        }
+
+        function playPenaltySettle(card) {
+            card.classList.remove('is-settling');
+            void card.offsetWidth;
+            card.classList.add('is-settling');
+            penaltyLater(() => card.classList.remove('is-settling'), 520);
+        }
+
+        function startPenaltyReel(reel, pool) {
+            if (!pool || !pool.length) {
+                reel.hidden = true;
+                return;
+            }
+            const base = [];
+            const count = Math.max(6, pool.length);
+            for (let i = 0; i < count; i += 1) base.push(pool[i % pool.length]);
+            const track = document.createElement('div');
+            track.className = 'penalty-reel-track';
+            for (const value of [...base, ...base]) {
+                const item = document.createElement('span');
+                item.className = 'penalty-reel-item';
+                item.textContent = value;
+                track.appendChild(item);
+            }
+            const duration = Math.max(0.5, base.length * 0.08);
+            track.style.animationDuration = `${duration.toFixed(2)}s`;
+            track.style.animationDelay = `-${(Math.random() * duration).toFixed(2)}s`;
+            reel.replaceChildren(track);
+            reel.hidden = false;
+        }
+
+        function stopPenaltyReel(reel) {
+            reel.hidden = true;
+            reel.replaceChildren();
+        }
+
+        function penaltyDifficultyKey() {
+            return state.diff.key || 'medium';
+        }
+
+        function formatMinutes(value) {
+            return `${Number.isInteger(value) ? value : value.toFixed(1)} 分钟`;
+        }
+
+        function penaltyTimePool(item) {
+            const range = item[penaltyDifficultyKey()] || item.medium;
+            const min = Math.round(range[0] * 1.2);
+            const max = Math.round(range[1] * 1.2);
+            const pool = [];
+            for (let minutes = min; minutes <= max; minutes += 1) pool.push(formatMinutes(minutes));
+            return pool;
+        }
+
+        function penaltyPool(kind) {
+            return kind === 'item' ? PENALTY_TABLE.map((item) => item.name) : penaltyTimePool(penaltyItem);
+        }
+
+        function resetPenaltyDraw() {
+            clearInterval(penaltyRollTimer);
+            clearInterval(penaltyMergeTimer);
+            clearPenaltyUiTimers();
+            stopPenaltyReel(penaltyItemReel);
+            stopPenaltyReel(penaltyTimeReel);
+            stopPenaltyReel(penaltyMergeReel);
+            penaltyRollTimer = null;
+            penaltyMergeTimer = null;
+            penaltyRolling = null;
+            penaltyRollValue = '';
+            penaltyItem = null;
+            penaltyTime = null;
+            penaltyMerged = false;
+            penaltyMergeRolling = false;
+            penaltyMergePick = '';
+            penaltyMergeResult = null;
+            penaltyCards.hidden = false;
+            penaltyCards.classList.remove('is-merging');
+            penaltyMergeCard.hidden = true;
+            penaltyMergeCard.disabled = false;
+            penaltyMergeCard.classList.remove('is-rolling', 'is-revealed', 'is-appearing', 'is-settling');
+            penaltyMergeValueEl.textContent = '点击抽取';
+            penaltyItemCard.disabled = false;
+            penaltyItemCard.classList.remove('is-rolling', 'is-revealed', 'is-settling');
+            penaltyTimeCard.disabled = true;
+            penaltyTimeCard.classList.remove('is-rolling', 'is-revealed', 'is-settling');
+            penaltyItemValue.textContent = '点击抽取';
+            penaltyTimeValue.textContent = '先抽项目';
+            penaltyHint.textContent = '点击卡片开始滚动，再次点击停牌';
+            penaltyActions.hidden = true;
+            penaltyActions.classList.remove('is-leaving');
+            penaltyFinish.hidden = true;
+            penaltyModal.classList.remove('is-final');
+            penaltyTitle.textContent = '加罚抽取';
+        }
+
+        function openPenaltyDraw() {
+            resetPenaltyDraw();
+            penaltyDifficulty.textContent = `当前程度：${DIFFICULTY_LABELS[penaltyDifficultyKey()] || '中度'}`;
+            penaltyModal.classList.remove('hidden');
+        }
+
+        function closePenaltyDraw() {
+            if (penaltyRolling) {
+                clearInterval(penaltyRollTimer);
+                penaltyRollTimer = null;
+                penaltyRolling = null;
+            }
+            if (penaltyMergeTimer) {
+                clearInterval(penaltyMergeTimer);
+                penaltyMergeTimer = null;
+            }
+            penaltyMergeRolling = false;
+            clearPenaltyUiTimers();
+            stopPenaltyReel(penaltyItemReel);
+            stopPenaltyReel(penaltyTimeReel);
+            stopPenaltyReel(penaltyMergeReel);
+            penaltyModal.classList.add('hidden');
+        }
+
+        function stopPenaltyRoll() {
+            if (!penaltyRolling) return;
+            const kind = penaltyRolling;
+            penaltyRolling = null;
+            clearInterval(penaltyRollTimer);
+            penaltyRollTimer = null;
+            if (kind === 'item') {
+                penaltyItemCard.classList.remove('is-rolling');
+                penaltyItemCard.classList.add('is-revealed');
+                playPenaltySettle(penaltyItemCard);
+                stopPenaltyReel(penaltyItemReel);
+                penaltyItemCard.disabled = true;
+                penaltyItem = PENALTY_TABLE.find((item) => item.name === penaltyRollValue) || PENALTY_TABLE[0];
+                penaltyItemValue.textContent = penaltyItem.name;
+                penaltyTimeCard.disabled = false;
+                penaltyTimeValue.textContent = '点击抽取';
+                penaltyHint.textContent = '项目已定，点击「时间」抽取时长';
+            } else {
+                penaltyTimeCard.classList.remove('is-rolling');
+                penaltyTimeCard.classList.add('is-revealed');
+                playPenaltySettle(penaltyTimeCard);
+                stopPenaltyReel(penaltyTimeReel);
+                penaltyTimeCard.disabled = true;
+                penaltyTime = penaltyRollValue;
+                penaltyTimeValue.textContent = penaltyTime;
+                penaltyHint.textContent = '抽取完成，请选择本次加罚结果';
+                penaltyActions.hidden = false;
+            }
+        }
+
+        function startPenaltyRoll(kind) {
+            if (penaltyRolling) { stopPenaltyRoll(); return; }
+            if (kind === 'item' && penaltyItem) return;
+            if (kind === 'time' && (!penaltyItem || penaltyTime)) return;
+            penaltyRolling = kind;
+            const valueEl = kind === 'item' ? penaltyItemValue : penaltyTimeValue;
+            if (kind === 'item') {
+                penaltyItemCard.classList.add('is-rolling');
+                penaltyTimeCard.disabled = true;
+            } else {
+                penaltyTimeCard.classList.add('is-rolling');
+                penaltyItemCard.disabled = true;
+            }
+            const pool = penaltyPool(kind);
+            startPenaltyReel(kind === 'item' ? penaltyItemReel : penaltyTimeReel, pool);
+            const tick = () => {
+                penaltyRollValue = pool[Math.floor(Math.random() * pool.length)];
+                valueEl.textContent = penaltyRollValue;
+            };
+            tick();
+            penaltyRollTimer = setInterval(tick, 65);
+        }
+
+        function handlePenaltyFail() {
+            if (!penaltyItem || !penaltyTime || penaltyMerged) return;
+            if (penaltyActions.classList.contains('is-leaving')) return;
+            penaltyModal.classList.add('is-final');
+            penaltyTitle.textContent = '终极惩罚';
+            penaltyDifficulty.textContent = '最终违规惩罚，但量力而行';
+            penaltyItemCard.classList.remove('is-settling');
+            penaltyTimeCard.classList.remove('is-settling');
+            penaltyActions.classList.add('is-leaving');
+            penaltyHint.textContent = '正在合并后续抽卡…';
+            penaltyLater(() => {
+                penaltyActions.hidden = true;
+                penaltyActions.classList.remove('is-leaving');
+                penaltyCards.classList.add('is-merging');
+                penaltyLater(() => {
+                    penaltyCards.hidden = true;
+                    penaltyCards.classList.remove('is-merging');
+                    penaltyMergeCard.hidden = false;
+                    penaltyMergeCard.disabled = false;
+                    penaltyMergeCard.classList.add('is-appearing');
+                    penaltyMerged = true;
+                    penaltyHint.textContent = '点击卡片开始滚动，再次点击停牌';
+                    penaltyLater(() => penaltyMergeCard.classList.remove('is-appearing'), 420);
+                }, 470);
+            }, 240);
+        }
+
+        function startPenaltyMergeRoll() {
+            if (!penaltyMerged || penaltyMergeResult) return;
+            if (penaltyMergeRolling) { stopPenaltyMergeRoll(); return; }
+            penaltyMergeRolling = true;
+            penaltyMergeCard.classList.remove('is-appearing');
+            penaltyMergeCard.classList.add('is-rolling');
+            startPenaltyReel(penaltyMergeReel, PENALTY_RETRY_OPTIONS);
+            const tick = () => {
+                penaltyMergePick = PENALTY_RETRY_OPTIONS[Math.floor(Math.random() * PENALTY_RETRY_OPTIONS.length)];
+                penaltyMergeValueEl.textContent = penaltyMergePick;
+            };
+            tick();
+            penaltyMergeTimer = setInterval(tick, 65);
+        }
+
+        function stopPenaltyMergeRoll() {
+            if (!penaltyMergeRolling) return;
+            penaltyMergeRolling = false;
+            clearInterval(penaltyMergeTimer);
+            penaltyMergeTimer = null;
+            penaltyMergeResult = penaltyMergePick;
+            penaltyMergeValueEl.textContent = penaltyMergeResult;
+            penaltyMergeCard.classList.remove('is-rolling');
+            penaltyMergeCard.classList.add('is-revealed');
+            playPenaltySettle(penaltyMergeCard);
+            stopPenaltyReel(penaltyMergeReel);
+            penaltyMergeCard.disabled = true;
+            penaltyHint.textContent = '后续惩罚已确定';
+            penaltyFinish.hidden = false;
+        }
+
+        function leavePenaltyDraw() {
+            closePenaltyDraw();
+            resetDraw(true);
+        }
+
+        document.getElementById('penalty-btn').onclick = (event) => { event.stopPropagation(); openPenaltyDraw(); };
+        penaltyDone.onclick = leavePenaltyDraw;
+        document.getElementById('penalty-fail').onclick = handlePenaltyFail;
+        penaltyFinish.onclick = leavePenaltyDraw;
+        penaltyMergeCard.onclick = startPenaltyMergeRoll;
+        penaltyItemCard.onclick = () => startPenaltyRoll('item');
+        penaltyTimeCard.onclick = () => startPenaltyRoll('time');
+        penaltyModal.onclick = (event) => { if (event.target === penaltyModal) closePenaltyDraw(); };
 
         async function updateCountAnim(newCount) {
             const display = document.getElementById('count-display');
@@ -1019,7 +1707,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
             document.querySelectorAll('.modal-overlay').forEach((overlay) => {
                 const panel = overlay.firstElementChild;
                 if (!panel) return;
-                if (overlay.id === 'diff-modal') {
+                if (overlay.id === 'diff-modal' || overlay.id === 'penalty-modal') {
                     panel.style.scale = '';
                     return;
                 }
