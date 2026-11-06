@@ -703,15 +703,62 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
 }
 .penalty-actions {
     margin-top: 16px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
     overflow: hidden;
-    max-height: 80px;
-    transition: opacity 0.24s ease, transform 0.24s ease, max-height 0.24s ease, margin-top 0.24s ease;
+    max-height: 210px;
+    transition: opacity 0.24s ease, transform 0.24s ease, max-height 0.24s ease, margin-top 0.24s ease, height 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
 }
 .penalty-actions[hidden] { display: none; }
 .penalty-actions.is-leaving { opacity: 0; transform: translateY(6px); max-height: 0; margin-top: 0; pointer-events: none; }
+.penalty-actions .penalty-action { width: 100%; }
+.penalty-actions .penalty-action:not([hidden]) { animation: penalty-finish-in 0.3s ease both; }
+.penalty-timer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    min-height: 60px;
+    padding: 8px 12px;
+    border: 1px solid rgba(210, 174, 114, 0.55);
+    border-radius: 16px;
+    background: linear-gradient(160deg, rgba(210, 174, 114, 0.16), rgba(32, 28, 24, 0.92));
+    color: #f3d39a;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.penalty-timer[hidden] { display: none; }
+.penalty-timer:not([hidden]) { animation: penalty-finish-in 0.3s ease both; }
+.penalty-timer:hover:not(.is-running):not(.is-complete) {
+    border-color: rgba(240, 214, 170, 0.9);
+    background: linear-gradient(160deg, rgba(210, 174, 114, 0.24), rgba(38, 32, 26, 0.94));
+    box-shadow: 0 0 24px rgba(201, 157, 85, 0.18);
+}
+.penalty-timer-caption { font-size: 9px; letter-spacing: 0.24em; color: var(--sp-muted); }
+.penalty-timer-clock { font-size: 24px; font-weight: 600; line-height: 1.15; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
+.penalty-timer.is-running {
+    cursor: default;
+    border-color: rgba(229, 197, 143, 0.85);
+    background: linear-gradient(160deg, rgba(210, 174, 114, 0.2), rgba(36, 31, 25, 0.95));
+    box-shadow: 0 0 26px rgba(201, 157, 85, 0.14), inset 0 0 22px rgba(201, 157, 85, 0.08);
+}
+.penalty-timer.is-running .penalty-timer-caption { color: #e3c08a; }
+.penalty-timer.is-running .penalty-timer-clock { color: #ffe2b0; animation: penalty-clock-pulse 2s ease-in-out infinite; }
+.penalty-timer.is-complete {
+    cursor: default;
+    border-color: rgba(210, 174, 114, 0.3);
+    background: linear-gradient(160deg, rgba(210, 174, 114, 0.08), rgba(30, 27, 24, 0.9));
+    color: #d5c4a6;
+    box-shadow: none;
+}
+@keyframes penalty-clock-pulse {
+    0%, 100% { text-shadow: 0 0 0 rgba(255, 226, 176, 0); }
+    50% { text-shadow: 0 0 18px rgba(255, 226, 176, 0.55); }
+}
 
 /* 终极惩罚：红线警告态 */
 #penalty-modal.is-final { background: rgba(18, 6, 6, 0.78); }
@@ -911,15 +958,17 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
     #penalty-modal .penalty-panel { padding: 10px 16px; }
     .penalty-title { margin: 6px 0 2px; font-size: 20px; }
     .penalty-sub { margin-bottom: 10px; }
-    .penalty-card { min-height: 110px; padding: 8px; gap: 6px; }
-    .penalty-card-display { height: 72px; }
+    .penalty-card { min-height: 104px; padding: 8px; gap: 6px; }
+    .penalty-card-display { height: 68px; }
     .penalty-card-value { font-size: 17px; }
     .penalty-reel-item { height: 24px; flex-basis: 24px; font-size: 15px; line-height: 24px; }
     .penalty-reel::after { height: 24px; }
     .penalty-hint { font-size: 9px; }
     .penalty-finish { margin-top: 10px; min-height: 40px; }
-    .penalty-actions { margin-top: 10px; }
-    .penalty-action { min-height: 40px; }
+    .penalty-actions { margin-top: 8px; gap: 6px; }
+    .penalty-action { min-height: 38px; }
+    .penalty-timer { min-height: 42px; padding: 3px 10px; border-radius: 13px; }
+    .penalty-timer-clock { font-size: 19px; }
 }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -1048,8 +1097,12 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
             <p id="penalty-hint" class="penalty-hint">点击卡片开始滚动，再次点击停牌</p>
             <button id="penalty-finish" class="penalty-action penalty-action-done penalty-finish" type="button" hidden>已完成惩罚</button>
             <div id="penalty-actions" class="penalty-actions" hidden>
-                <button id="penalty-done" class="penalty-action penalty-action-done" type="button">惩罚完成</button>
-                <button id="penalty-fail" class="penalty-action penalty-action-fail" type="button">未能完成</button>
+                <button id="penalty-timer" class="penalty-timer" type="button" hidden>
+                    <span id="penalty-timer-caption" class="penalty-timer-caption">点击开始计时</span>
+                    <span id="penalty-timer-clock" class="penalty-timer-clock">00:00</span>
+                </button>
+                <button id="penalty-fail" class="penalty-action penalty-action-fail" type="button" hidden>未能完成</button>
+                <button id="penalty-done" class="penalty-action penalty-action-done" type="button" hidden>惩罚完成</button>
             </div>
         </div>
     </div>
@@ -1196,6 +1249,10 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         const penaltyMergeReel = document.getElementById('penalty-merge-reel');
         const penaltyFinish = document.getElementById('penalty-finish');
         const penaltyDone = document.getElementById('penalty-done');
+        const penaltyFail = document.getElementById('penalty-fail');
+        const penaltyTimer = document.getElementById('penalty-timer');
+        const penaltyTimerCaption = document.getElementById('penalty-timer-caption');
+        const penaltyTimerClock = document.getElementById('penalty-timer-clock');
         const penaltyTitle = document.getElementById('penalty-title');
         const penaltyDifficulty = document.getElementById('penalty-difficulty');
         let penaltyItem = null;
@@ -1209,6 +1266,8 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         let penaltyMergePick = '';
         let penaltyMergeResult = null;
         let penaltyUiTimers = [];
+        let penaltyTimerId = null;
+        let penaltyRemaining = 0;
 
         function penaltyLater(callback, delay) {
             const timer = setTimeout(callback, delay);
@@ -1277,6 +1336,84 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
             return kind === 'item' ? PENALTY_TABLE.map((item) => item.name) : penaltyTimePool(penaltyItem);
         }
 
+        function formatClock(totalSeconds) {
+            const safe = Math.max(0, Math.round(totalSeconds));
+            return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
+        }
+
+        function stopPenaltyCountdown() {
+            if (penaltyTimerId) {
+                clearInterval(penaltyTimerId);
+                penaltyTimerId = null;
+            }
+        }
+
+        function resetPenaltyTimer() {
+            stopPenaltyCountdown();
+            penaltyRemaining = 0;
+            penaltyTimer.hidden = true;
+            penaltyTimer.disabled = false;
+            penaltyTimer.classList.remove('is-running', 'is-complete');
+            penaltyTimerCaption.textContent = '点击开始计时';
+            penaltyTimerClock.textContent = '00:00';
+            penaltyDone.hidden = true;
+            penaltyFail.hidden = true;
+            penaltyActions.style.height = '';
+        }
+
+        function preparePenaltyCountdown() {
+            penaltyRemaining = Math.max(1, Math.round((parseFloat(penaltyTime) || 0) * 60));
+            penaltyTimer.hidden = false;
+            penaltyTimer.disabled = false;
+            penaltyTimer.classList.remove('is-running', 'is-complete');
+            penaltyTimerCaption.textContent = '点击开始计时';
+            penaltyTimerClock.textContent = formatClock(penaltyRemaining);
+            penaltyHint.textContent = `抽到的时长为 ${penaltyTime}，点击「开始计时」`;
+            penaltyActions.hidden = false;
+        }
+
+        function revealPenaltyDone() {
+            if (!penaltyDone.hidden) return;
+            penaltyActions.style.height = `${penaltyActions.getBoundingClientRect().height}px`;
+            penaltyDone.hidden = false;
+            void penaltyActions.offsetHeight;
+            penaltyActions.style.height = `${penaltyActions.scrollHeight}px`;
+            const settle = (event) => {
+                if (event && event.propertyName !== 'height') return;
+                penaltyActions.removeEventListener('transitionend', settle);
+                penaltyActions.style.height = '';
+            };
+            penaltyActions.addEventListener('transitionend', settle);
+            penaltyLater(settle, 400);
+        }
+
+        function finishPenaltyCountdown() {
+            stopPenaltyCountdown();
+            penaltyRemaining = 0;
+            penaltyTimer.classList.remove('is-running');
+            penaltyTimer.classList.add('is-complete');
+            penaltyTimerCaption.textContent = '计时结束';
+            penaltyTimerClock.textContent = formatClock(0);
+            revealPenaltyDone();
+            penaltyHint.textContent = '计时结束，请确认本次加罚结果';
+            playStop();
+        }
+
+        function startPenaltyCountdown() {
+            if (penaltyTimer.hidden || penaltyTimerId) return;
+            if (penaltyTimer.classList.contains('is-complete')) return;
+            unlockAudio();
+            penaltyTimer.classList.add('is-running');
+            penaltyTimerCaption.textContent = '剩余时间';
+            penaltyFail.hidden = false;
+            penaltyHint.textContent = '计时中，坚持完成；若无法完成可点击「未能完成」';
+            penaltyTimerId = setInterval(() => {
+                penaltyRemaining -= 1;
+                penaltyTimerClock.textContent = formatClock(penaltyRemaining);
+                if (penaltyRemaining <= 0) finishPenaltyCountdown();
+            }, 1000);
+        }
+
         function resetPenaltyDraw() {
             clearInterval(penaltyRollTimer);
             clearInterval(penaltyMergeTimer);
@@ -1307,6 +1444,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
             penaltyItemValue.textContent = '点击抽取';
             penaltyTimeValue.textContent = '先抽项目';
             penaltyHint.textContent = '点击卡片开始滚动，再次点击停牌';
+            resetPenaltyTimer();
             penaltyActions.hidden = true;
             penaltyActions.classList.remove('is-leaving');
             penaltyFinish.hidden = true;
@@ -1331,6 +1469,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
                 penaltyMergeTimer = null;
             }
             penaltyMergeRolling = false;
+            stopPenaltyCountdown();
             clearPenaltyUiTimers();
             stopPenaltyReel(penaltyItemReel);
             stopPenaltyReel(penaltyTimeReel);
@@ -1363,8 +1502,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
                 penaltyTimeCard.disabled = true;
                 penaltyTime = penaltyRollValue;
                 penaltyTimeValue.textContent = penaltyTime;
-                penaltyHint.textContent = '抽取完成，请选择本次加罚结果';
-                penaltyActions.hidden = false;
+                preparePenaltyCountdown();
             }
         }
 
@@ -1394,6 +1532,8 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         function handlePenaltyFail() {
             if (!penaltyItem || !penaltyTime || penaltyMerged) return;
             if (penaltyActions.classList.contains('is-leaving')) return;
+            stopPenaltyCountdown();
+            penaltyActions.style.height = '';
             penaltyModal.classList.add('is-final');
             penaltyTitle.textContent = '终极惩罚';
             penaltyDifficulty.textContent = '最终违规惩罚，但量力而行';
@@ -1456,7 +1596,8 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
 
         document.getElementById('penalty-btn').onclick = (event) => { event.stopPropagation(); openPenaltyDraw(); };
         penaltyDone.onclick = leavePenaltyDraw;
-        document.getElementById('penalty-fail').onclick = handlePenaltyFail;
+        penaltyFail.onclick = handlePenaltyFail;
+        penaltyTimer.onclick = startPenaltyCountdown;
         penaltyFinish.onclick = leavePenaltyDraw;
         penaltyMergeCard.onclick = startPenaltyMergeRoll;
         penaltyItemCard.onclick = () => startPenaltyRoll('item');
