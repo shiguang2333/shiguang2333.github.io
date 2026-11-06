@@ -68,6 +68,101 @@ window.SHORT_CARD = {
       "dual": 8
     }
   },
+  "roleVariant": {
+    "trigger": {
+      "category": "gender",
+      "group": "role",
+      "value": "主"
+    },
+    "hidden": [
+      "clothing"
+    ],
+    "overrides": {
+      "intensity": {
+        "title": "手劲大小",
+        "items": [
+          {
+            "id": "d-intensity-1",
+            "name": "大"
+          },
+          {
+            "id": "d-intensity-2",
+            "name": "中"
+          },
+          {
+            "id": "d-intensity-3",
+            "name": "小"
+          },
+          {
+            "id": "d-intensity-4",
+            "name": "超人"
+          }
+        ]
+      },
+      "rhythm": {
+        "title": "常用节奏"
+      },
+      "pleasure": {
+        "title": "快感来源",
+        "items": [
+          {
+            "id": "d-pleasure-1",
+            "name": "掌控感"
+          },
+          {
+            "id": "d-pleasure-2",
+            "name": "视觉效果"
+          },
+          {
+            "id": "d-pleasure-3",
+            "name": "情感关系"
+          },
+          {
+            "id": "d-pleasure-4",
+            "name": "纯手痒"
+          },
+          {
+            "id": "d-pleasure-5",
+            "name": "关怀下位"
+          }
+        ]
+      },
+      "cooperation": {
+        "title": "实践执行",
+        "items": [
+          {
+            "id": "d-cooperation-1",
+            "name": "强硬语气"
+          },
+          {
+            "id": "d-cooperation-2",
+            "name": "边打边聊"
+          },
+          {
+            "id": "d-cooperation-3",
+            "name": "持续安抚"
+          },
+          {
+            "id": "d-cooperation-4",
+            "name": "心软的人"
+          },
+          {
+            "id": "d-cooperation-5",
+            "name": "恶魔上身"
+          }
+        ]
+      },
+      "tools": {
+        "title": "常用工具"
+      },
+      "parts": {
+        "title": "偏好部位"
+      },
+      "postures": {
+        "title": "偏好姿势"
+      }
+    }
+  },
   "categories": [
     {
       "id": "gender",

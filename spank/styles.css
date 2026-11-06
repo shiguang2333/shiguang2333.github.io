@@ -308,6 +308,26 @@ input, textarea {
   font-size: 10.5px;
   white-space: nowrap;
 }
+.view-actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  margin-left: auto;
+}
+.view-actions .reset-button { margin-left: 0; }
+.gender-button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .view-row { flex-wrap: wrap; }
+  .view-actions { width: 100%; margin-left: 0; }
+  .view-actions > button { flex: 1; }
+}
 .view-option {
   display: inline-flex;
   flex: 1;
@@ -1537,6 +1557,58 @@ input, textarea {
 }
 
 .reset-panel { max-width: 420px; }
+.gender-panel {
+  display: flex;
+  flex-direction: column;
+  max-width: 420px;
+  overflow: hidden;
+}
+.gender-panel .modal-head,
+.gender-panel .modal-copy,
+.gender-actions { flex: none; }
+.gender-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 2px 0 14px;
+  max-height: min(54vh, 460px);
+  max-height: min(54dvh, 460px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.gender-actions { display: flex; }
+.gender-actions .gold-button { width: 100%; }
+.dual-panel { max-width: 420px; }
+.dual-actions { display: flex; }
+.dual-actions .gold-button { width: 100%; }
+.dual-start-panel { max-width: 340px; padding: 14px; }
+.dual-start-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 118px;
+  padding: 22px 18px;
+  border: 1px solid rgba(201, 157, 85, 0.42);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(201, 157, 85, 0.14), transparent 62%),
+    rgba(255, 255, 255, 0.02);
+  color: #f1ece5;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.dual-start-button:hover {
+  border-color: rgba(210, 174, 114, 0.75);
+  background:
+    radial-gradient(circle at 50% 0, rgba(201, 157, 85, 0.2), transparent 62%),
+    rgba(255, 255, 255, 0.035);
+}
+.dual-start-button:active { transform: translateY(1px); }
+.dual-start-title { font-size: 18px; letter-spacing: 0.08em; }
+.dual-start-hint { font-size: 10px; letter-spacing: 0.04em; color: #8e8881; }
 .modal-copy {
   margin: 0 0 18px;
   color: #a29a91;

@@ -56,35 +56,108 @@
 
   /* ---------- 分类与条目索引 ---------- */
 
-  const cats = [...DATA.categories].sort((a, b) => {
+  // 本人属性 = 主 时使用另一套分类文案与选项（定义在 spank/tools/build-short.mjs 的 roleVariant）；贝 / 双 沿用原填涂卡
+  const ROLE_VARIANT = DATA.roleVariant || null;
+  const DOM_ROLE_NAME = (ROLE_VARIANT && ROLE_VARIANT.trigger && ROLE_VARIANT.trigger.value) || '主';
+  const DOM_VARIANT = {
+    hidden: (ROLE_VARIANT && ROLE_VARIANT.hidden) || [],
+    overrides: (ROLE_VARIANT && ROLE_VARIANT.overrides) || {},
+  };
+
+  const sortCategories = (list) => [...list].sort((a, b) => {
     const ia = CATEGORY_ORDER.indexOf(a.id);
     const ib = CATEGORY_ORDER.indexOf(b.id);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
   });
 
-  for (const cat of cats) {
-    const fromName = (cat.color.match(/from-([a-z]+)-400/) || [])[1];
-    const toName = (cat.color.match(/to-([a-z]+)-500/) || [])[1];
-    const base = (PALETTE[fromName] || [])[0] || '#d2ae72';
-    const strong = (PALETTE[toName] || [])[1] || (PALETTE[fromName] || [])[1] || '#c49b5f';
-    cat._accent = base;
-    cat._strong = strong;
-    cat._soft = rgba(base, 0.12);
-    cat._line = rgba(base, 0.48);
+  function decorateCats(list) {
+    for (const cat of list) {
+      const fromName = (cat.color.match(/from-([a-z]+)-400/) || [])[1];
+      const toName = (cat.color.match(/to-([a-z]+)-500/) || [])[1];
+      const base = (PALETTE[fromName] || [])[0] || '#d2ae72';
+      const strong = (PALETTE[toName] || [])[1] || (PALETTE[fromName] || [])[1] || '#c49b5f';
+      cat._accent = base;
+      cat._strong = strong;
+      cat._soft = rgba(base, 0.12);
+      cat._line = rgba(base, 0.48);
+    }
   }
 
-  const catById = new Map(cats.map((cat) => [cat.id, cat]));
-  const itemIndex = new Map();
-  for (const cat of cats) {
-    for (const item of cat.items) itemIndex.set(item.id, { item, cat });
+  function buildDomCats(baseList) {
+    return baseList
+      .filter((cat) => !DOM_VARIANT.hidden.includes(cat.id))
+      .map((cat) => {
+        const override = DOM_VARIANT.overrides[cat.id];
+        if (!override) return cat;
+        const next = { ...cat, title: override.title || cat.title };
+        if (override.items) {
+          next.items = override.items.map((item) => ({ ...item, selected: false, isNew: true }));
+        }
+        return next;
+      });
   }
-  const allItems = cats.flatMap((cat) => cat.items);
-  const wizardSteps = [
-    ...cats.map((cat) => ({ id: `cat-${cat.id}`, title: cat.title, cat })),
-    { id: 'notesSection', title: '其他', cat: null }
-  ];
+
+  const BASE_CATS = sortCategories(DATA.categories);
+  decorateCats(BASE_CATS);
+  const DOM_CATS = buildDomCats(BASE_CATS);
+  // 双属性的主表不重复填写「渴求关系」（已在贝表填写，结果中也只出现一次）
+  const DOM_DUAL_MAIN_CATS = DOM_CATS.filter((cat) => cat.id !== 'relation');
+
+  const GENDER_CAT_ID = (ROLE_VARIANT && ROLE_VARIANT.trigger && ROLE_VARIANT.trigger.category) || 'gender';
+  const GENDER_CAT = BASE_CATS.find((cat) => cat.id === GENDER_CAT_ID) || null;
+
+  let cats = BASE_CATS;
+  let stepCats = [];
+  let catById = new Map();
+  let itemIndex = new Map();
+  let allItems = [];
+  let wizardSteps = [];
+
+  function rebuildIndexes() {
+    catById = new Map(cats.map((cat) => [cat.id, cat]));
+    itemIndex = new Map();
+    for (const cat of cats) {
+      for (const item of cat.items) itemIndex.set(item.id, { item, cat });
+    }
+    allItems = cats.flatMap((cat) => cat.items);
+    // 性别单独放在弹窗里，不参与逐类填写、导航与进度
+    stepCats = cats.filter((cat) => cat.id !== GENDER_CAT_ID);
+    wizardSteps = [
+      ...stepCats.map((cat) => ({ id: `cat-${cat.id}`, title: cat.title, cat })),
+      { id: 'notesSection', title: '其他', cat: null }
+    ];
+  }
+  rebuildIndexes();
+
+  function setActiveCats(list) {
+    cats = list;
+    rebuildIndexes();
+  }
+
+  function roleNameFrom(source) {
+    const trigger = (ROLE_VARIANT && ROLE_VARIANT.trigger) || {};
+    const gender = BASE_CATS.find((cat) => cat.id === (trigger.category || 'gender'));
+    if (!gender) return '';
+    const group = trigger.group || 'role';
+    const item = gender.items.find((entry) => entry.group === group && (Number(source[entry.id]) || 0) === 1);
+    return item ? item.name : '';
+  }
+
+  function isDomMode() {
+    const role = roleNameFrom(answers);
+    if (role === '双') return dualPhase === 'main';
+    return role === DOM_ROLE_NAME;
+  }
+
+  function domCatsForRole() {
+    return roleNameFrom(answers) === '双' ? DOM_DUAL_MAIN_CATS : DOM_CATS;
+  }
+
+  function activeTotalItems() {
+    return cats.reduce((sum, cat) => sum + cat.items.length, 0);
+  }
+
   const shortVersion = String(DATA.version || '1.2').replace(/\.0$/, '');
-  const TOTAL_ITEMS = Number(DATA.total) || allItems.length;
 
   /* ---------- DOM ---------- */
 
@@ -105,6 +178,15 @@
   const resetModal = byId('resetModal');
   const confirmReset = byId('confirmReset');
   const resetBtn = byId('resetBtn');
+  const genderBtn = byId('genderBtn');
+  const genderModal = byId('genderModal');
+  const genderContent = byId('genderContent');
+  const genderDoneBtn = byId('genderDoneBtn');
+  const dualNoticeModal = byId('dualNoticeModal');
+  const dualNoticeConfirm = byId('dualNoticeConfirm');
+  const dualStartModal = byId('dualStartModal');
+  const dualStartBtn = byId('dualStartBtn');
+  const dualStartCount = byId('dualStartCount');
   const toast = byId('toast');
   const progressCount = byId('progressCount');
   const progressTotal = byId('progressTotal');
@@ -127,6 +209,12 @@
   let currentActive = null;
   let saveTimer = 0;
   let lastFocus = null;
+  let genderEditing = false;
+  let genderOpenRole = '';
+  let genderOpenAnswers = {};
+  let dualPhase = 'sub';
+  let dualSubAnswers = {};
+  let dualStartTimer = null;
 
   function emptyProfile() {
     return { hardLimits: '', preferences: '' };
@@ -144,25 +232,28 @@
   function sanitizeAnswers(raw) {
     const clean = {};
     if (!raw || typeof raw !== 'object') return clean;
-    for (const cat of cats) {
-      let selected = 0;
-      const dualGroups = new Set();
-      for (const item of cat.items) {
-        const value = Number(raw[item.id]);
-        if (cat.input === 'bottle') {
-          if (Number.isInteger(value) && value >= 1 && value <= 3) clean[item.id] = value;
-        } else if (value === 1) {
-          if (cat.input === 'dual') {
-            const group = item.group || '';
-            if (!dualGroups.has(group)) {
+    // 两套分类的条目 id 互不相同，按各自分类分别校验，保留主 / 贝两套填写记录
+    for (const list of [BASE_CATS, DOM_CATS]) {
+      for (const cat of list) {
+        let selected = 0;
+        const dualGroups = new Set();
+        for (const item of cat.items) {
+          const value = Number(raw[item.id]);
+          if (cat.input === 'bottle') {
+            if (Number.isInteger(value) && value >= 1 && value <= 3) clean[item.id] = value;
+          } else if (value === 1) {
+            if (cat.input === 'dual') {
+              const group = item.group || '';
+              if (!dualGroups.has(group)) {
+                clean[item.id] = 1;
+                dualGroups.add(group);
+              }
+            } else if (cat.input === 'single' || cat.input === 'scale') {
+              if (selected === 0) { clean[item.id] = 1; selected += 1; }
+            } else if (!cat.maxSelections || selected < cat.maxSelections) {
               clean[item.id] = 1;
-              dualGroups.add(group);
+              selected += 1;
             }
-          } else if (cat.input === 'single' || cat.input === 'scale') {
-            if (selected === 0) { clean[item.id] = 1; selected += 1; }
-          } else if (!cat.maxSelections || selected < cat.maxSelections) {
-            clean[item.id] = 1;
-            selected += 1;
           }
         }
       }
@@ -184,7 +275,11 @@
         profile,
         answers: compact,
         view: viewMode,
-        wizardIndex
+        wizardIndex,
+        dualPhase,
+        dualSubAnswers: Object.fromEntries(
+          Object.entries(dualSubAnswers).filter(([, value]) => Number(value) > 0)
+        )
       }));
     } catch (error) {
       /* 隐私模式或存储已满时静默失败 */
@@ -203,7 +298,16 @@
         const saved = JSON.parse(raw);
         if (saved && saved.v === 1) {
           profile = sanitizeProfile(saved.profile);
-          answers = sanitizeAnswers(saved.answers);
+          const savedAnswers = saved.answers && typeof saved.answers === 'object' ? saved.answers : {};
+          dualPhase = saved.dualPhase === 'main' ? 'main' : 'sub';
+          dualSubAnswers = saved.dualSubAnswers && typeof saved.dualSubAnswers === 'object'
+            ? sanitizeAnswers(saved.dualSubAnswers)
+            : {};
+          const savedRole = roleNameFrom(savedAnswers);
+          const useDom = savedRole === DOM_ROLE_NAME || (savedRole === '双' && dualPhase === 'main');
+          const domList = savedRole === '双' ? DOM_DUAL_MAIN_CATS : DOM_CATS;
+          setActiveCats(useDom ? domList : BASE_CATS);
+          answers = sanitizeAnswers(savedAnswers);
           if (saved.view === 'page' || saved.view === 'wizard') viewMode = saved.view;
           const savedIndex = Number(saved.wizardIndex);
           if (Number.isInteger(savedIndex)) {
@@ -227,10 +331,33 @@
     }
   }
 
+  function updateFooter() {
+    byId('footVersion').textContent = `简短版 v${shortVersion} · ${activeTotalItems()} 项 · 数据仅保存在本机浏览器`;
+  }
+
+  /* 本人属性切换（主 / 贝 / 双）后重建分类、索引并重渲染 */
+  function refreshVariant(skipScaleDefaults) {
+    const next = isDomMode() ? domCatsForRole() : BASE_CATS;
+    if (next === cats) return false;
+    const activeId = wizardIndex < stepCats.length ? stepCats[wizardIndex].id : null;
+    setActiveCats(next);
+    if (!skipScaleDefaults) applyScaleDefaults();
+    const nextIndex = activeId ? stepCats.findIndex((cat) => cat.id === activeId) : -1;
+    wizardIndex = nextIndex >= 0 ? nextIndex : Math.min(wizardIndex, wizardSteps.length - 1);
+    renderNav();
+    renderCategories();
+    applyViewMode();
+    paintAll();
+    updateAll();
+    updateFooter();
+    if (viewMode === 'page') syncActiveNav(true);
+    return true;
+  }
+
   /* ---------- 渲染 ---------- */
 
   function renderNav() {
-    const chips = cats.map((cat) => (
+    const chips = stepCats.map((cat) => (
       `<button type="button" class="cat-chip" data-target="cat-${cat.id}" style="--accent:${cat._accent}" aria-label="跳到${cat.title}"><span class="chip-dot"></span>${cat.title}</button>`
     ));
     chips.push('<button type="button" class="cat-chip" data-target="notesSection" style="--accent:#d2ae72" aria-label="跳到其他"><span class="chip-dot"></span>其他</button>');
@@ -238,7 +365,7 @@
   }
 
   function renderCategories() {
-    categoriesEl.innerHTML = cats.map((cat, index) => renderCategory(cat, index)).join('');
+    categoriesEl.innerHTML = stepCats.map((cat, index) => renderCategory(cat, index)).join('');
   }
 
   function renderCategory(cat, index) {
@@ -460,7 +587,7 @@
 
   function filledCategoryCount() {
     let count = 0;
-    for (const cat of cats) {
+    for (const cat of stepCats) {
       if (isCategoryComplete(cat)) count += 1;
     }
     return count;
@@ -505,7 +632,7 @@
   }
 
   function updateNavState() {
-    for (const cat of cats) {
+    for (const cat of stepCats) {
       const chip = catNav.querySelector(`[data-target="cat-${cat.id}"]`);
       if (chip) chip.classList.toggle('has-answers', answeredCount(cat.items) > 0);
     }
@@ -515,7 +642,7 @@
 
   function updateProgress() {
     const done = filledCategoryCount();
-    const totalCategories = cats.length;
+    const totalCategories = stepCats.length;
     const ratio = totalCategories ? Math.min(1, done / totalCategories) : 0;
     const percent = Math.round(ratio * 100);
     progressCount.textContent = String(done);
@@ -526,13 +653,13 @@
     progressHint.textContent = done >= totalCategories
       ? '全部分类已填 · 记得保存摘要'
       : done === 0
-        ? `${totalCategories} 个分类 · ${new Set(cats.map((c) => c.input)).size} 种填法`
+        ? `${totalCategories} 个分类 · ${new Set(stepCats.map((c) => c.input)).size} 种填法`
         : `还差 ${totalCategories - done} 类 · 随时可以停`;    progressTrack.setAttribute('aria-valuenow', String(percent));
     updateDockProgress();
   }
 
   function updateDockProgress() {
-    const total = cats.length;
+    const total = stepCats.length;
     dockTotal.textContent = String(total);
     if (viewMode === 'wizard' && wizardIndex >= total) {
       dockPrefix.hidden = true;
@@ -547,7 +674,7 @@
   }
 
   function updateAll() {
-    for (const cat of cats) updateCategory(cat);
+    for (const cat of stepCats) updateCategory(cat);
     updateNavState();
     updateProgress();
   }
@@ -634,6 +761,17 @@
       paintItem(item.id);
     }
 
+    if (cat.id === GENDER_CAT_ID) {
+      // 弹窗内选择只更新性别本身，清空其他分类与切换内容留到关闭弹窗时统一处理
+      if (genderEditing) {
+        renderGenderModal();
+        return;
+      }
+      finalizeGenderChange();
+      saveState();
+      return;
+    }
+
     updateCategory(cat);
     updateProgress();
     updateNavState();
@@ -683,9 +821,9 @@
   function setActiveNav(targetId, center) {
     currentActive = targetId;
     if (targetId === 'notesSection') {
-      wizardIndex = cats.length;
+      wizardIndex = stepCats.length;
     } else {
-      const index = cats.findIndex((cat) => `cat-${cat.id}` === targetId);
+      const index = stepCats.findIndex((cat) => `cat-${cat.id}` === targetId);
       if (index >= 0) wizardIndex = index;
     }
     for (const chip of catNav.querySelectorAll('.cat-chip')) {
@@ -697,8 +835,8 @@
 
   function currentSectionId() {
     const offset = catNav.getBoundingClientRect().height + 20;
-    let active = `cat-${cats[0].id}`;
-    for (const cat of cats) {
+    let active = `cat-${stepCats[0].id}`;
+    for (const cat of stepCats) {
       const section = byId(`cat-${cat.id}`);
       if (section && section.getBoundingClientRect().top - offset <= 0) {
         active = `cat-${cat.id}`;
@@ -719,19 +857,20 @@
 
   function updateDock() {
     const wizard = viewMode === 'wizard';
+    const finalLabel = isDualSubPhase() ? '填写主表' : '查看结果';
     prevBtn.hidden = !wizard;
     prevBtn.disabled = !wizard || wizardIndex <= 0;
     if (wizard) {
-      if (wizardIndex < cats.length) {
+      if (wizardIndex < stepCats.length) {
         summaryBtn.innerHTML = '下一类 <span aria-hidden="true">→</span>';
         summaryBtn.setAttribute('aria-label', '下一类');
       } else {
-        summaryBtn.innerHTML = '查看结果 <span aria-hidden="true">→</span>';
-        summaryBtn.setAttribute('aria-label', '查看结果');
+        summaryBtn.innerHTML = `${finalLabel} <span aria-hidden="true">→</span>`;
+        summaryBtn.setAttribute('aria-label', finalLabel);
       }
     } else {
-      summaryBtn.innerHTML = '查看结果 <span aria-hidden="true">→</span>';
-      summaryBtn.setAttribute('aria-label', '查看结果');
+      summaryBtn.innerHTML = `${finalLabel} <span aria-hidden="true">→</span>`;
+      summaryBtn.setAttribute('aria-label', finalLabel);
     }
     updateDockProgress();
   }
@@ -750,17 +889,17 @@
     }
 
     if (wizard) {
-      const onNotes = wizardIndex >= cats.length;
+      const onNotes = wizardIndex >= stepCats.length;
       categoriesEl.hidden = onNotes;
       notesSection.hidden = !onNotes;
-      cats.forEach((cat, index) => {
+      stepCats.forEach((cat, index) => {
         const section = byId(`cat-${cat.id}`);
         if (section) section.hidden = index !== wizardIndex;
       });
     } else {
       categoriesEl.hidden = false;
       notesSection.hidden = false;
-      for (const cat of cats) {
+      for (const cat of stepCats) {
         const section = byId(`cat-${cat.id}`);
         if (section) section.hidden = false;
       }
@@ -769,8 +908,8 @@
   }
 
   function animateStepCard() {
-    const target = wizardIndex < cats.length
-      ? byId(`cat-${cats[wizardIndex].id}`)
+    const target = wizardIndex < stepCats.length
+      ? byId(`cat-${stepCats[wizardIndex].id}`)
       : notesSection;
     if (!target) return;
     target.classList.remove('is-step-enter');
@@ -780,8 +919,8 @@
   }
 
   function scrollToWizardCard() {
-    const target = wizardIndex < cats.length
-      ? byId(`cat-${cats[wizardIndex].id}`)
+    const target = wizardIndex < stepCats.length
+      ? byId(`cat-${stepCats[wizardIndex].id}`)
       : notesSection;
     if (!target) return;
     const top = target.getBoundingClientRect().top + window.scrollY - 9;
@@ -802,6 +941,8 @@
   function wizardNext() {
     if (wizardIndex < wizardSteps.length - 1) {
       goToStep(wizardIndex + 1);
+    } else if (isDualSubPhase()) {
+      startDualMainPhase();
     } else {
       openSummary();
     }
@@ -813,9 +954,9 @@
     if (mode === 'wizard') {
       const activeId = currentSectionId();
       if (activeId === 'notesSection') {
-        wizardIndex = cats.length;
+        wizardIndex = stepCats.length;
       } else {
-        const index = cats.findIndex((cat) => `cat-${cat.id}` === activeId);
+        const index = stepCats.findIndex((cat) => `cat-${cat.id}` === activeId);
         if (index >= 0) wizardIndex = index;
       }
       viewMode = 'wizard';
@@ -828,8 +969,8 @@
       return;
     }
 
-    const targetId = wizardIndex < cats.length
-      ? `cat-${cats[wizardIndex].id}`
+    const targetId = wizardIndex < stepCats.length
+      ? `cat-${stepCats[wizardIndex].id}`
       : 'notesSection';
     viewMode = 'page';
     applyViewMode();
@@ -863,13 +1004,194 @@
     }
   }
 
-  function collectSummary() {
-    return cats.map((cat) => ({
-      cat,
+  /* ---------- 性别 / 本人属性弹窗 ---------- */
+
+  function renderGenderModal() {
+    if (!genderContent || !GENDER_CAT) return;
+    genderContent.innerHTML = renderDual(GENDER_CAT);
+  }
+
+  function genderAnswerSnapshot() {
+    const snapshot = {};
+    if (!GENDER_CAT) return snapshot;
+    for (const item of GENDER_CAT.items) {
+      const value = Number(answers[item.id]) || 0;
+      if (value > 0) snapshot[item.id] = value;
+    }
+    return snapshot;
+  }
+
+  function restoreGenderAnswers() {
+    if (!GENDER_CAT) return;
+    for (const item of GENDER_CAT.items) {
+      if (Number(genderOpenAnswers[item.id]) > 0) answers[item.id] = genderOpenAnswers[item.id];
+      else delete answers[item.id];
+    }
+  }
+
+  function openGenderModal() {
+    genderOpenRole = roleNameFrom(answers);
+    genderOpenAnswers = genderAnswerSnapshot();
+    renderGenderModal();
+    openModal(genderModal);
+  }
+
+  function cancelGenderModal() {
+    if (genderModal.hidden) return;
+    restoreGenderAnswers();
+    saveState();
+    closeModal(genderModal);
+  }
+
+  function finalizeGenderChange() {
+    const currentRole = roleNameFrom(answers);
+    const roleChanged = currentRole !== genderOpenRole;
+    genderOpenRole = currentRole;
+    if (!roleChanged) return { roleChanged: false, role: currentRole };
+    clearNonGenderAnswers();
+    dualSubAnswers = {};
+    dualPhase = 'sub';
+    const variantChanged = refreshVariant();
+    if (!variantChanged) {
+      applyScaleDefaults();
+      paintAll();
+      updateAll();
+    }
+    saveState();
+    if (currentRole !== '双') showToast('已切换本人属性，其他分类已清空');
+    return { roleChanged: true, role: currentRole };
+  }
+
+  function closeGenderModal() {
+    if (genderModal.hidden) return;
+    const result = finalizeGenderChange();
+    saveState();
+    closeModal(genderModal);
+    if (result.roleChanged && result.role === '双') {
+      setTimeout(openDualNotice, 260);
+    }
+  }
+
+  /* ---------- 双属性：贝表 → 主表 两段式填写 ---------- */
+
+  function isDualSubPhase() {
+    return roleNameFrom(answers) === '双' && dualPhase === 'sub';
+  }
+
+  function openDualNotice() {
+    openModal(dualNoticeModal);
+  }
+
+  function stopDualStartTimer() {
+    if (dualStartTimer) {
+      clearInterval(dualStartTimer);
+      dualStartTimer = null;
+    }
+  }
+
+  function openDualStart() {
+    dualStartCount.textContent = '3';
+    openModal(dualStartModal);
+    let remaining = 3;
+    stopDualStartTimer();
+    dualStartTimer = setInterval(() => {
+      remaining -= 1;
+      dualStartCount.textContent = String(Math.max(0, remaining));
+      if (remaining <= 0) startDualSubPhase();
+    }, 1000);
+  }
+
+  function startDualSubPhase() {
+    stopDualStartTimer();
+    if (!dualStartModal.hidden) closeModal(dualStartModal);
+    dualPhase = 'sub';
+    dualSubAnswers = {};
+    setActiveCats(BASE_CATS);
+    applyScaleDefaults();
+    wizardIndex = 0;
+    viewMode = 'wizard';
+    renderNav();
+    renderCategories();
+    applyViewMode();
+    paintAll();
+    updateAll();
+    updateFooter();
+    saveState();
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    requestAnimationFrame(() => {
+      scrollToWizardCard();
+      animateStepCard();
+    });
+    showToast('当前填写：贝表');
+  }
+
+  function startDualMainPhase() {
+    // 备份贝表答案，清空其他分类后让主表从空白开始
+    dualSubAnswers = { ...answers };
+    const genderIds = new Set(GENDER_CAT ? GENDER_CAT.items.map((item) => item.id) : []);
+    for (const id of Object.keys(answers)) {
+      if (!genderIds.has(id)) delete answers[id];
+    }
+    dualPhase = 'main';
+    setActiveCats(DOM_DUAL_MAIN_CATS);
+    applyScaleDefaults();
+    wizardIndex = 0;
+    viewMode = 'wizard';
+    renderNav();
+    renderCategories();
+    applyViewMode();
+    paintAll();
+    updateAll();
+    updateFooter();
+    saveState();
+    window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
+    requestAnimationFrame(() => {
+      scrollToWizardCard();
+      animateStepCard();
+    });
+    showToast('当前填写：主表');
+  }
+
+  function clearNonGenderAnswers() {
+    const genderIds = new Set(GENDER_CAT ? GENDER_CAT.items.map((item) => item.id) : []);
+    for (const id of Object.keys(answers)) {
+      if (!genderIds.has(id)) delete answers[id];
+    }
+  }
+
+  function summaryGroupOf(cat, title, source = answers) {
+    return {
+      cat: title ? { ...cat, title } : cat,
       chosen: cat.items
-        .filter((item) => (Number(answers[item.id]) || 0) > 0)
-        .map((item) => ({ item, level: Number(answers[item.id]) || 0 }))
-    })).filter((group) => group.chosen.length > 0);
+        .filter((item) => (Number(source[item.id]) || 0) > 0)
+        .map((item) => ({ item, level: Number(source[item.id]) || 0 }))
+    };
+  }
+
+  function collectSummary() {
+    if (roleNameFrom(answers) === '双') {
+      // 双属性：贝表（切换前备份）+ 主表；渴求关系只在贝表出现一次
+      const groups = [];
+      if (GENDER_CAT) groups.push(summaryGroupOf(GENDER_CAT));
+      const subSource = dualPhase === 'main' ? dualSubAnswers : answers;
+      for (const cat of BASE_CATS) {
+        if (cat.id === GENDER_CAT_ID) continue;
+        groups.push(summaryGroupOf(cat, cat.id === 'relation' ? cat.title : `贝 · ${cat.title}`, subSource));
+      }
+      for (const cat of DOM_DUAL_MAIN_CATS) {
+        if (cat.id === GENDER_CAT_ID) continue;
+        groups.push(summaryGroupOf(cat, `主 · ${cat.title}`));
+      }
+      return groups.filter((group) => group.chosen.length > 0);
+    }
+    return cats.map((cat) => summaryGroupOf(cat)).filter((group) => group.chosen.length > 0);
+  }
+
+  function summaryTotalGroups() {
+    if (roleNameFrom(answers) === '双') {
+      return (BASE_CATS.length - 1) + (DOM_DUAL_MAIN_CATS.length - 1);
+    }
+    return stepCats.length;
   }
 
   function summaryHardLimits() {
@@ -906,6 +1228,7 @@
 
   function renderSummary() {
     const groups = collectSummary();
+    const filledSteps = groups.filter((group) => group.cat.id !== GENDER_CAT_ID).length;
     const totalItems = groups.reduce((sum, group) => sum + group.chosen.length, 0);
     const hardLimits = summaryHardLimits();
     const preferences = summaryPreferences();
@@ -920,7 +1243,7 @@
 
     let html = `<div class="summary-headline">
       <span class="eyebrow">SHORT CARD V${esc(shortVersion)}</span>
-      <p class="summary-stat"><b>${groups.length}</b> / ${cats.length} 类已填</p>
+      <p class="summary-stat"><b>${filledSteps}</b> / ${summaryTotalGroups()} 类已填</p>
     </div>`;
 
     if (!groups.length && !hardLimits && !preferences) {
@@ -1067,6 +1390,7 @@
 
   function exportSummaryImage() {
     const groups = collectSummary();
+    const filledSteps = groups.filter((group) => group.cat.id !== GENDER_CAT_ID).length;
     const hardLimits = summaryHardLimits();
     const preferences = summaryPreferences();
     const totalItems = groups.reduce((sum, group) => sum + group.chosen.length, 0);
@@ -1197,7 +1521,7 @@
     ctx.fillText('我的属性卡', contentX, header.titleY);
     setFont(ctx, 22, 400);
     ctx.fillStyle = '#d2ae72';
-    const stat = `${groups.length} / ${cats.length} 类已填`;
+    const stat = `${filledSteps} / ${summaryTotalGroups()} 类已填`;
     ctx.fillText(stat, contentX, header.statY);
     const statWidth = ctx.measureText(stat).width;
     ctx.fillStyle = '#8e8881';
@@ -1379,17 +1703,25 @@
     viewMode = 'wizard';
     wizardIndex = 0;
     summaryDisplay = 'bottle';
+    dualPhase = 'sub';
+    dualSubAnswers = {};
+    stopDualStartTimer();
+    setActiveCats(BASE_CATS);
+    renderNav();
+    renderCategories();
     applyScaleDefaults();
     syncProfileInputs();
     paintAll();
     updateAll();
     applyViewMode();
+    updateFooter();
     try { localStorage.removeItem(STORAGE_KEY); } catch (error) { /* ignore */ }
     try {
       if (location.hash) history.replaceState(null, '', location.pathname + location.search);
     } catch (error) { /* ignore */ }
     closeModal(resetModal);
     showToast('已清空整张卡');
+    setTimeout(() => openGenderModal(), 240);
     window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
   }
 
@@ -1397,9 +1729,24 @@
 
   function bindEvents() {
     resetBtn.addEventListener('click', () => openModal(resetModal));
+    genderBtn.addEventListener('click', openGenderModal);
+    genderContent.addEventListener('click', (event) => {
+      const target = event.target.closest('[data-item]');
+      if (!target) return;
+      genderEditing = true;
+      try {
+        onItemClick(target);
+      } finally {
+        genderEditing = false;
+      }
+    });
     summaryBtn.addEventListener('click', () => {
-      if (viewMode === 'wizard' && wizardIndex < cats.length) {
+      if (viewMode === 'wizard' && wizardIndex < stepCats.length) {
         goToStep(wizardIndex + 1);
+        return;
+      }
+      if (isDualSubPhase()) {
+        startDualMainPhase();
         return;
       }
       openSummary();
@@ -1448,6 +1795,18 @@
         button.addEventListener('click', () => closeModal(modal));
       });
     }
+    genderModal.addEventListener('click', (event) => {
+      if (event.target === genderModal) cancelGenderModal();
+    });
+    genderModal.querySelectorAll('[data-close]').forEach((button) => {
+      button.addEventListener('click', cancelGenderModal);
+    });
+    genderDoneBtn.addEventListener('click', closeGenderModal);
+    dualNoticeConfirm.addEventListener('click', () => {
+      closeModal(dualNoticeModal);
+      setTimeout(openDualStart, 220);
+    });
+    dualStartBtn.addEventListener('click', startDualSubPhase);
     summaryContent.addEventListener('scroll', updateSummaryScrollHint, { passive: true });
     if ('ResizeObserver' in window) {
       new ResizeObserver(() => updateSummaryScrollHint()).observe(summaryContent);
@@ -1455,13 +1814,14 @@
 
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
+      if (!genderModal.hidden) { cancelGenderModal(); return; }
       const open = [summaryModal, resetModal].find((modal) => !modal.hidden);
       if (open) closeModal(open);
     });
 
     document.addEventListener('keydown', (event) => {
       if (viewMode !== 'wizard') return;
-      if (!summaryModal.hidden || !resetModal.hidden) return;
+      if (!summaryModal.hidden || !resetModal.hidden || !genderModal.hidden || !dualNoticeModal.hidden || !dualStartModal.hidden) return;
       const target = event.target;
       const tag = target && target.tagName ? target.tagName.toLowerCase() : '';
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || (target && target.isContentEditable)) return;
@@ -1523,9 +1883,9 @@
   /* ---------- 初始化 ---------- */
 
   function init() {
+    loadState();
     renderNav();
     renderCategories();
-    loadState();
     applyScaleDefaults();
     syncProfileInputs();
     paintAll();
@@ -1535,8 +1895,11 @@
 
     syncActiveNav(true);
 
+    // 初次进入（没有保存过本人属性）时先弹出性别选择
+    if (!roleNameFrom(answers)) openGenderModal();
+
     byId('versionTag').textContent = `v${shortVersion}`;
-    byId('footVersion').textContent = `简短版 v${shortVersion} · ${TOTAL_ITEMS} 项 · 数据仅保存在本机浏览器`;
+    updateFooter();
   }
 
   init();

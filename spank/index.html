@@ -31,7 +31,10 @@
             <button type="button" class="view-option is-active" data-view="wizard" aria-pressed="true"><span aria-hidden="true">◎</span>逐类填写</button>
             <button type="button" class="view-option" data-view="page" aria-pressed="false"><span aria-hidden="true">☰</span>整页填写</button>
           </div>
-          <button id="resetBtn" class="ghost-button reset-button" type="button">重置</button>
+          <div class="view-actions">
+            <button id="genderBtn" class="ghost-button gender-button" type="button">修改性别/偏好</button>
+            <button id="resetBtn" class="ghost-button reset-button" type="button">重置</button>
+          </div>
         </div>
 
         <div class="progress-card">
@@ -109,6 +112,50 @@
         <button id="exportImageBtn" class="gold-button" type="button">导出图片</button>
         <p class="summary-privacy">导出的图片会包含你的填写内容，请只分享给信任的人。</p>
       </div>
+    </div>
+  </div>
+
+  <!-- 性别 / 本人属性 -->
+  <div id="genderModal" class="modal" hidden>
+    <div class="modal-panel gender-panel" role="dialog" aria-modal="true" aria-labelledby="genderTitle">
+      <header class="modal-head">
+        <div>
+          <p class="eyebrow">PROFILE</p>
+          <h2 id="genderTitle">性别与本人属性</h2>
+        </div>
+        <button class="icon-button" type="button" data-close aria-label="关闭性别选择">×</button>
+      </header>
+      <p class="modal-copy">本人属性决定填涂内容（主 / 贝两套）。更改本人属性会清空其他分类的已填内容。</p>
+      <div id="genderContent" class="gender-content"></div>
+      <div class="gender-actions">
+        <button id="genderDoneBtn" class="gold-button" type="button">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 双属性填写说明 -->
+  <div id="dualNoticeModal" class="modal" hidden>
+    <div class="modal-panel dual-panel" role="dialog" aria-modal="true" aria-labelledby="dualNoticeTitle">
+      <header class="modal-head">
+        <div>
+          <p class="eyebrow">DUAL PROFILE</p>
+          <h2 id="dualNoticeTitle">双属性填写说明</h2>
+        </div>
+      </header>
+      <p class="modal-copy">当前版本「双」需要分别填写主和贝的表，后续可能进行完善。</p>
+      <div class="dual-actions">
+        <button id="dualNoticeConfirm" class="gold-button" type="button">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 双属性：开始填写贝表 -->
+  <div id="dualStartModal" class="modal" hidden>
+    <div class="modal-panel dual-start-panel" role="dialog" aria-modal="true" aria-labelledby="dualStartTitle">
+      <button id="dualStartBtn" class="dual-start-button" type="button">
+        <span id="dualStartTitle" class="dual-start-title">当前填写为贝</span>
+        <span class="dual-start-hint"><span id="dualStartCount">3</span> 秒后自动进入 · 点击立即进入</span>
+      </button>
     </div>
   </div>
 
