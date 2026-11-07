@@ -173,6 +173,7 @@
   const summaryContent = byId('summaryContent');
   const summaryScrollHint = byId('summaryScrollHint');
   const summaryViewSwitch = byId('summaryViewSwitch');
+  const summaryTitle = byId('summaryTitle');
   const summaryViewButtons = [...document.querySelectorAll('[data-summary-view]')];
   const exportImageBtn = byId('exportImageBtn');
   const resetModal = byId('resetModal');
@@ -1226,6 +1227,38 @@
     </span>`;
   }
 
+  function summaryItemLabel(cat, item) {
+    return cat.input === 'dual' ? `${item.groupLabel} · ${item.name}` : item.name;
+  }
+
+  // 表头取值沿用性别选择窗口的配色：男蓝、女粉、双淡紫、主琥珀、贝紫
+  const IDENT_NAME_COLORS = {
+    '男': '#93c5fd',
+    '女': '#f9a8d4',
+    '双': '#e9d5ff',
+    '主': '#fbbf24',
+    '贝': '#c4b5fd'
+  };
+
+  function summaryIdentColor(item) {
+    return IDENT_NAME_COLORS[item.name] || '#d2ae72';
+  }
+
+  function renderSummaryIdent(genderGroup) {
+    const chosen = genderGroup ? genderGroup.chosen : [];
+    if (!chosen.length) {
+      summaryTitle.textContent = '我的属性卡';
+      summaryTitle.classList.remove('is-ident');
+      return;
+    }
+    summaryTitle.innerHTML = chosen
+      .map(({ item }) => (genderGroup.cat.input === 'dual'
+        ? `<span class="ident-item"><b style="--ident-accent:${summaryIdentColor(item)}">${esc(item.name)}</b><span class="ident-key">${esc(item.groupLabel)}</span></span>`
+        : `<span class="ident-item"><b style="--ident-accent:#d2ae72">${esc(summaryItemLabel(genderGroup.cat, item))}</b></span>`))
+      .join('');
+    summaryTitle.classList.add('is-ident');
+  }
+
   function renderSummary() {
     const groups = collectSummary();
     const filledSteps = groups.filter((group) => group.cat.id !== GENDER_CAT_ID).length;
@@ -1233,6 +1266,10 @@
     const hardLimits = summaryHardLimits();
     const preferences = summaryPreferences();
     const hasBottleGroups = groups.some((group) => group.cat.input === 'bottle');
+    const genderGroup = groups.find((group) => group.cat.id === GENDER_CAT_ID);
+    const contentGroups = groups.filter((group) => group.cat.id !== GENDER_CAT_ID);
+
+    renderSummaryIdent(genderGroup);
 
     summaryViewSwitch.hidden = !hasBottleGroups;
     for (const button of summaryViewButtons) {
@@ -1246,18 +1283,18 @@
       <p class="summary-stat"><b>${filledSteps}</b> / ${summaryTotalGroups()} 类已填</p>
     </div>`;
 
-    if (!groups.length && !hardLimits && !preferences) {
+    if (!contentGroups.length && !hardLimits && !preferences) {
       html += `<div class="summary-empty">
         <span class="empty-mark" aria-hidden="true">◌</span>
         <span>还没有填写任何项目。<br>回去点几个瓶子，或者勾选一项。</span>
       </div>`;
-    } else if (groups.length) {
-      for (const { cat, chosen } of groups) {
+    } else if (contentGroups.length) {
+      for (const { cat, chosen } of contentGroups) {
         const useBottles = cat.input === 'bottle' && summaryDisplay === 'bottle';
         const body = useBottles
           ? `<div class="summary-bottle-grid">${chosen.map(({ item, level }) => summaryBottleMarkup(cat, item, level)).join('')}</div>`
           : `<div class="summary-items">${chosen.map(({ item, level }) => {
-              const label = cat.input === 'dual' ? `${item.groupLabel} · ${item.name}` : item.name;
+              const label = summaryItemLabel(cat, item);
               return cat.input === 'bottle'
                 ? `<span class="sum-item"><b>${esc(item.name)}</b><i>${LEVEL_LABELS[level]}</i></span>`
                 : `<span class="sum-item">${esc(label)}</span>`;
@@ -1388,6 +1425,32 @@
     ctx.lineCap = 'butt';
   }
 
+  // 表头身份三列（与页面一致）：大字取值在上、小字项目名在下，颜色沿用性别选择窗口
+  function drawCanvasIdentColumns(ctx, measure, x, y, chosen) {
+    const colGap = 46;
+    const valueSize = 34;
+    const keySize = 15;
+    let cx = x;
+    for (const { item } of chosen) {
+      const hasKey = Boolean(item.groupLabel);
+      measure.font = canvasFont(valueSize, 500);
+      const valW = measure.measureText(item.name).width;
+      measure.font = canvasFont(keySize, 400);
+      const keyW = hasKey ? measure.measureText(item.groupLabel).width : 0;
+      const colW = Math.max(valW, keyW);
+
+      ctx.fillStyle = summaryIdentColor(item);
+      ctx.font = canvasFont(valueSize, 500);
+      ctx.fillText(item.name, cx + (colW - valW) / 2, y);
+      if (hasKey) {
+        ctx.fillStyle = '#8f8578';
+        ctx.font = canvasFont(keySize, 400);
+        ctx.fillText(item.groupLabel, cx + (colW - keyW) / 2, y + 44);
+      }
+      cx += colW + colGap;
+    }
+  }
+
   function exportSummaryImage() {
     const groups = collectSummary();
     const filledSteps = groups.filter((group) => group.cat.id !== GENDER_CAT_ID).length;
@@ -1395,6 +1458,8 @@
     const preferences = summaryPreferences();
     const totalItems = groups.reduce((sum, group) => sum + group.chosen.length, 0);
     if (!groups.length && !hardLimits && !preferences) return;
+    const genderGroup = groups.find((group) => group.cat.id === GENDER_CAT_ID);
+    const contentGroups = groups.filter((group) => group.cat.id !== GENDER_CAT_ID);
 
     const width = 1080;
     const margin = 44;
@@ -1414,10 +1479,10 @@
     };
     let y = header.statY + 66;
     const groupLayouts = [];
-    const hasBottleGroups = groups.some((group) => group.cat.input === 'bottle');
+    const hasBottleGroups = contentGroups.some((group) => group.cat.input === 'bottle');
     const useBottleDisplay = summaryDisplay === 'bottle' && hasBottleGroups;
 
-    for (const { cat, chosen } of groups) {
+    for (const { cat, chosen } of contentGroups) {
       const headerY = y;
       const contentY = headerY + 50;
       if (cat.input === 'bottle' && useBottleDisplay) {
@@ -1516,9 +1581,13 @@
     ctx.fillStyle = '#b19577';
     setFont(ctx, 18, 500);
     ctx.fillText('NOCTURNE ARCHIVE · SHORT CARD', contentX, header.eyebrowY);
-    ctx.fillStyle = '#f1ece5';
-    setFont(ctx, 52, 300);
-    ctx.fillText('我的属性卡', contentX, header.titleY);
+    if (genderGroup) {
+      drawCanvasIdentColumns(ctx, measure, contentX, header.titleY, genderGroup.chosen);
+    } else {
+      ctx.fillStyle = '#f1ece5';
+      setFont(ctx, 52, 300);
+      ctx.fillText('我的属性卡', contentX, header.titleY);
+    }
     setFont(ctx, 22, 400);
     ctx.fillStyle = '#d2ae72';
     const stat = `${filledSteps} / ${summaryTotalGroups()} 类已填`;

@@ -82,16 +82,16 @@ window.SHORT_CARD = {
         "title": "手劲大小",
         "items": [
           {
-            "id": "d-intensity-1",
-            "name": "大"
+            "id": "d-intensity-3",
+            "name": "小"
           },
           {
             "id": "d-intensity-2",
             "name": "中"
           },
           {
-            "id": "d-intensity-3",
-            "name": "小"
+            "id": "d-intensity-1",
+            "name": "大"
           },
           {
             "id": "d-intensity-4",
