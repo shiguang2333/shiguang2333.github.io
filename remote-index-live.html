@@ -985,13 +985,13 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         <div class="sp-diff-panel">
             <h2 class="sp-eyebrow sp-diff-title">选择惩罚程度</h2>
             <div class="sp-diff-list flex flex-col w-full items-center">
-                <button onclick="selectDiff(30, 50, 30, 'light')" class="button btn-white w-full" type="button">
+                <button onclick="selectDiff('light')" class="button btn-white w-full" type="button">
                     <span class="text_button">轻度</span>
                 </button>
-                <button onclick="selectDiff(50, 80, 60, 'medium')" class="button btn-orange w-full" type="button">
+                <button onclick="selectDiff('medium')" class="button btn-orange w-full" type="button">
                     <span class="text_button">中度</span>
                 </button>
-                <button onclick="selectDiff(80, 110, 80, 'heavy')" class="button btn-red w-full" type="button">
+                <button onclick="selectDiff('heavy')" class="button btn-red w-full" type="button">
                     <span class="text_button">重度</span>
                 </button>
             </div>
@@ -1057,7 +1057,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         <div class="sp-modal-panel sp-rules-panel">
             <h2 class="sp-modal-title">惩罚规则与联动</h2>
             <div class="sp-rules-copy">
-                <p><strong>工具系数：</strong><br/>x1.0: 马鞭/手掌/猫爪/散鞭/衣架<br/>x0.95: 发刷<br/>x0.9: 皮带/小木拍/皮拍/硅胶拍/戒尺<br/>x0.8: 大木拍/数据线<br/>x0.7: 皮鞭/藤条</p>
+                <p id="rules-tool-coeff"></p>
                 <p><strong>加罚说明：</strong><br/>1. 报数/声小/报错/求饶 +5次。<br/>2. 乱动/遮挡/躲闪/喊疼 +10次。<br/>(上限50次加罚)</p>
             </div>
             <button id="close-modal" class="sp-modal-close" type="button">关闭</button>
@@ -1117,8 +1117,23 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         </div>
     </div>
 
+<!-- 卡池与抽取逻辑来自 sp-pool.js（源：src/data/sp-pool.js，由 tools/build-sp-pool.mjs 生成）。 -->
+<script src="./sp-pool.js?v=16"></script>
 <script>
-        const coefficients = { "马鞭": 1, "皮带": 0.9, "手掌": 1, "发刷": 0.95, "皮鞭": 0.7, "小木拍": 0.9, "大木拍": 0.8, "皮拍": 0.9, "藤条": 0.7, "猫爪拍": 1, "散鞭": 1, "衣架": 1, "数据线": 0.8, "硅胶拍": 0.9, "戒尺": 0.9 };
+        // 工具系数与卡池统一取自 sp-pool.js，勿在本文件内另建池子。
+        (function renderRuleCoefficients() {
+            const el = document.getElementById('rules-tool-coeff');
+            if (!el) return;
+            const groups = new Map();
+            SP_POOL.SP_TOOLS.forEach(([name, coeff]) => {
+                if (!groups.has(coeff)) groups.set(coeff, []);
+                groups.get(coeff).push(name);
+            });
+            const lines = [...groups.entries()]
+                .sort((a, b) => b[0] - a[0])
+                .map(([coeff, names]) => `x${Number.isInteger(coeff) ? coeff.toFixed(1) : coeff}: ${names.join('/')}`);
+            el.innerHTML = `<strong>工具系数：</strong><br/>${lines.join('<br/>')}`;
+        })();
         let clickSynth = null;
         let finishSynth = null;
         let finalRevealSynth = null;
@@ -1150,7 +1165,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
 
         const HISTORY_KEY = 'sp-card-history-v1';
         const MAX_HISTORY = 12;
-        let state = { step: 0, results: [,,,], diff: {min: 50, max: 80, floor: 60, key: 'medium'}, isRolling: false, autoDrawing: false, currentCount: 0, history: loadHistory() };
+        let state = { step: 0, results: [,,,], diff: { ...SP_POOL.SP_DIFFICULTIES.medium, key: 'medium' }, isRolling: false, autoDrawing: false, currentCount: 0, history: loadHistory() };
         const btn = document.getElementById('draw-btn');
         const quickDrawBtn = document.getElementById('quick-draw-btn');
         const container = document.getElementById('cards-container');
@@ -1193,9 +1208,10 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
             historyModal.setAttribute('aria-hidden', 'true');
         }
 
-        function selectDiff(min, max, floor, key) {
-            const resolvedKey = key || (min === 30 ? 'light' : min === 80 ? 'heavy' : 'medium');
-            state.diff = {min, max, floor, key: resolvedKey};
+        function selectDiff(key) {
+            const preset = SP_POOL.SP_DIFFICULTIES[key];
+            if (!preset) return;
+            state.diff = { min: preset.min, max: preset.max, floor: preset.floor, key };
             const modal = document.getElementById('diff-modal');
             modal.classList.add('fade-out');
             document.getElementById('main-container').classList.add('fade-in');
@@ -1209,21 +1225,8 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeHistory(); closePenaltyDraw(); } });
 
         /* ---------- 加罚抽取（项目 + 时间） ---------- */
-        // 数据来源：Grok 表格.csv；基础区间整体 +20% 后四舍五入为整数分钟，在整数范围内均匀抽取
-        const PENALTY_TABLE = [
-            { name: '抱头罚跪', light: [8, 12], medium: [13, 17], heavy: [18, 25] },
-            { name: '举臂罚跪', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
-            { name: '跪姿顶物', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
-            { name: '跪姿持鞭', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
-            { name: '分腿罚跪', light: [6, 9], medium: [10, 13], heavy: [14, 18] },
-            { name: 'M开腿蹲', light: [2, 3], medium: [3.5, 4.5], heavy: [5, 7] },
-            { name: '分腿面壁', light: [8, 12], medium: [13, 16], heavy: [17, 22] },
-            { name: '扎马步', light: [2, 3], medium: [3.5, 4], heavy: [4.5, 6] },
-            { name: '背手踮脚', light: [3, 4], medium: [5, 6], heavy: [7, 10] },
-            { name: '扶墙撅臀', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
-            { name: '平举重物', light: [3, 4], medium: [5, 6], heavy: [7, 10] },
-            { name: '顶鞭面壁', light: [5, 7], medium: [8, 10], heavy: [11, 15] },
-        ];
+        // 项目 / 时间池与飞行棋共用，数据源：src/data/sp-pool.js（经 sp-pool.js 注入）。
+        const PENALTY_TABLE = SP_POOL.SP_EXTRA_PENALTY_ITEMS;
         const DIFFICULTY_LABELS = { light: '轻度', medium: '中度', heavy: '重度' };
         const PENALTY_RETRY_OPTIONS = [
             '原加罚内容重新开始',
@@ -1324,9 +1327,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         }
 
         function penaltyTimePool(item) {
-            const range = item[penaltyDifficultyKey()] || item.medium;
-            const min = Math.round(range[0] * 1.2);
-            const max = Math.round(range[1] * 1.2);
+            const [min, max] = SP_POOL.extraPenaltyTimeRange(item, penaltyDifficultyKey());
             const pool = [];
             for (let minutes = min; minutes <= max; minutes += 1) pool.push(formatMinutes(minutes));
             return pool;
@@ -1620,23 +1621,10 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
         }
 
         function getPool(index) {
-            if (index === 2) {
-                const pool = [];
-                for (let i = state.diff.min; i <= state.diff.max; i++) pool.push(i + "次");
-                return pool;
-            }
-            const pools = [["马鞭", "皮带", "手掌", "发刷", "皮鞭", "小木拍", "大木拍", "皮拍", "藤条", "猫爪拍", "散鞭", "衣架", "数据线", "硅胶拍", "戒尺"], ["膝上", "俯卧", "跪姿", "弯腰岔腿", "扶手", "尿布", "四足支撑", "趴桌", "跪趴", "支椅背", "弯腰握踝", "椅子分腿"], [], ["屁股", "大腿根", "脚心", "手心", "小腿肚", "大腿肚", "阴部", "臀缝", "小臂", "大臂", "脸", "胸部"]];
-            if (index === 3) {
-                const pose = state.results[1];
-                const tool = state.results[0];
-                const legs = (pose !== "膝上" && tool !== "手掌") ? ["小腿肚", "大腿肚"] : [];
-                let areas = pose === "膝上"
-                    ? ["屁股"]
-                    : ["屁股", "大腿根", "阴部", "臀缝", ...(pose === "跪姿" ? ["手心", "小臂", "大臂"] : []), ...((pose === "跪姿" || pose === "椅子分腿") ? ["胸部", "脸"] : []), ...((pose === "俯卧" || pose === "尿布" || pose === "跪趴") ? ["脚心"] : []), ...legs];
-                if (tool === "手掌") areas = areas.filter((area) => ["脸", "阴部", "屁股", "胸部"].includes(area));
-                return areas.length ? areas : ["屁股"];
-            }
-            return [...pools[index]];
+            if (index === 2) return SP_POOL.countPool(state.diff);
+            if (index === 0) return [...SP_POOL.SP_TOOL_NAMES];
+            if (index === 1) return [...SP_POOL.SP_POSES];
+            return SP_POOL.buildPunishmentAreas(state.results[1], state.results[0]);
         }
 
         async function cardClick(index) {
@@ -1656,9 +1644,10 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
             state.isRolling = true;
             cardEl.classList.add('active');
             const pool = getPool(index);
+            const formatDrawn = (value) => (index === 2 ? `${value}次` : value);
 
             while (state.isRolling) {
-                valueEl.textContent = weightedPick(pool, index);
+                valueEl.textContent = formatDrawn(weightedPick(pool, index));
                 playClick();
                 await new Promise(r => setTimeout(r, 100));
             }
@@ -1694,33 +1683,10 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
             quickDrawBtn.disabled = false;
         }
 
-        const HISTORY_WINDOW = 6;
-        const REPEAT_DECAY = 0.2;
-        const NO_IMMEDIATE_REPEAT = new Set([0, 1]);
-
+        // 抽取规则统一在 SP_POOL.pickSpCardValue 中实现（与飞行棋共用）。
         function weightedPick(pool, index) {
             if (!pool.length) return '';
-            const recentValues = state.history.slice(0, HISTORY_WINDOW).map((entry) => [entry.tool, entry.pose, entry.rawCount + '次', entry.area][index]);
-            let candidates = pool;
-            if (NO_IMMEDIATE_REPEAT.has(index) && state.history.length) {
-                const lastValue = [state.history[0].tool, state.history[0].pose][index];
-                const filtered = pool.filter((value) => value !== lastValue);
-                if (filtered.length) candidates = filtered;
-            }
-            const weights = candidates.map((value) => {
-                let weight = 1;
-                const repeatCount = recentValues.filter((previousValue) => value === previousValue).length;
-                if (repeatCount) weight *= Math.pow(REPEAT_DECAY, repeatCount);
-                if (index === 3 && value === '屁股') weight *= 0.24;
-                return weight;
-            });
-            const total = weights.reduce((sum, weight) => sum + weight, 0);
-            let cursor = Math.random() * total;
-            for (let i = 0; i < candidates.length; i++) {
-                cursor -= weights[i];
-                if (cursor <= 0) return candidates[i];
-            }
-            return candidates[candidates.length - 1];
+            return SP_POOL.pickSpCardValue(pool, index, state.history);
         }
 
         function resetDraw(showDifficulty = false) {
@@ -1796,8 +1762,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
                 if (baseHeight > 0) mainContainer.style.height = `${baseHeight}px`;
 
                 const rawCount = parseInt(state.results[2]);
-                const coeff = coefficients[state.results[0]] || 1;
-                const calculatedCount = Math.max(state.diff.floor, Math.round(rawCount * coeff));
+                const { count: calculatedCount } = SP_POOL.computePunishmentCount(rawCount, state.results[0], state.diff.floor);
 
                 state.history.unshift({
                     time: new Date().toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
