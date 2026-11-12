@@ -27,6 +27,10 @@ const SP_HISTORY_WINDOW = 6
 const SP_REPEAT_DECAY = 0.2
 const SP_BUTT_AREA_WEIGHT = 1 // 1 = 不单独压低屁股权重
 
+// 池子限制：用户在「小圈」入口弹窗中选择的可抽工具 / 姿势 / 部位，
+// 同时作用于 SP 抽卡与飞行棋。未设置时视为全选。
+const SP_POOL_FILTER_KEY = 'nocturne_sp_pool_filter'
+
 function buildPunishmentAreas(pose, tool) {
   const legs = (pose !== '膝上' && tool !== '手掌') ? ['小腿肚', '大腿肚'] : []
   let areas = pose === '膝上'
@@ -39,6 +43,72 @@ function buildPunishmentAreas(pose, tool) {
       ...legs]
   if (tool === '手掌') areas = areas.filter((area) => ['脸', '阴部', '屁股', '胸部'].includes(area))
   return areas.length ? areas : ['屁股']
+}
+
+// 所有姿势 × 工具组合可能出现的部位（保持首次出现顺序），供池子选择弹窗展示。
+const SP_AREAS = (() => {
+  const areas = []
+  for (const pose of SP_POSES) {
+    for (const tool of SP_TOOL_NAMES) {
+      for (const area of buildPunishmentAreas(pose, tool)) {
+        if (!areas.includes(area)) areas.push(area)
+      }
+    }
+  }
+  return areas
+})()
+
+const normalizePoolSelection = (values, allowed) => {
+  if (!Array.isArray(values)) return allowed
+  const chosen = allowed.filter((value) => values.includes(value))
+  return chosen.length ? chosen : allowed
+}
+
+// 读取已保存的池子限制；未保存或无效时返回 null（视为全选）。
+function readSpPoolFilter() {
+  try {
+    if (typeof window === 'undefined') return null
+    const stored = JSON.parse(window.localStorage.getItem(SP_POOL_FILTER_KEY) || 'null')
+    if (!stored || typeof stored !== 'object') return null
+    return {
+      tools: normalizePoolSelection(stored.tools, SP_TOOL_NAMES),
+      poses: normalizePoolSelection(stored.poses, SP_POSES),
+      areas: normalizePoolSelection(stored.areas, SP_AREAS),
+    }
+  } catch {
+    return null
+  }
+}
+
+function saveSpPoolFilter(filter) {
+  const normalized = {
+    tools: normalizePoolSelection(filter?.tools, SP_TOOL_NAMES),
+    poses: normalizePoolSelection(filter?.poses, SP_POSES),
+    areas: normalizePoolSelection(filter?.areas, SP_AREAS),
+  }
+  try {
+    if (typeof window !== 'undefined') window.localStorage.setItem(SP_POOL_FILTER_KEY, JSON.stringify(normalized))
+  } catch {}
+  return normalized
+}
+
+function getFilteredSpTools(filter = readSpPoolFilter()) {
+  return filter ? SP_TOOL_NAMES.filter((name) => filter.tools.includes(name)) : [...SP_TOOL_NAMES]
+}
+
+function getFilteredSpPoses(filter = readSpPoolFilter()) {
+  return filter ? SP_POSES.filter((name) => filter.poses.includes(name)) : [...SP_POSES]
+}
+
+// 部位先按姿势 / 工具的固有组合过滤；若组合内已无选中部位，
+// 退回用户选中的全部部位，保证绝不抽出未勾选的部位。
+function getFilteredSpAreas(pose, tool, filter = readSpPoolFilter()) {
+  const available = buildPunishmentAreas(pose, tool)
+  if (!filter) return available
+  const allowed = available.filter((area) => filter.areas.includes(area))
+  if (allowed.length) return allowed
+  const chosen = SP_AREAS.filter((area) => filter.areas.includes(area))
+  return chosen.length ? chosen : available
 }
 
 function pickWeightedValue(pool, weightOf) {
@@ -90,9 +160,10 @@ function computePunishmentCount(rawCount, tool, floor) {
 
 // 一次抽齐四项。countUniform 为 true 时基础次数在档位区间内纯均匀随机（飞行棋使用）。
 function drawSpPunishment({ history = [], countSpec = SP_LIGHT_COUNT, countUniform = false } = {}) {
-  const tool = pickSpCardValue(SP_TOOL_NAMES, 0, history)
-  const pose = pickSpCardValue(SP_POSES, 1, history)
-  const area = pickSpCardValue(buildPunishmentAreas(pose, tool), 3, history)
+  const filter = readSpPoolFilter()
+  const tool = pickSpCardValue(getFilteredSpTools(filter), 0, history)
+  const pose = pickSpCardValue(getFilteredSpPoses(filter), 1, history)
+  const area = pickSpCardValue(getFilteredSpAreas(pose, tool, filter), 3, history)
   const rawCount = countUniform
     ? countSpec.min + Math.floor(Math.random() * (countSpec.max - countSpec.min + 1))
     : pickSpCardValue(countPool(countSpec), 2, history)
@@ -141,5 +212,5 @@ function drawExtraPenalty({ difficultyKey = 'light' } = {}) {
   return { item: item.name, minutes, summary: `${item.name} ${minutes} 分钟` }
 }
 
-window.SP_POOL = { SP_TOOLS, SP_TOOL_NAMES, SP_TOOL_COEFF, SP_POSES, SP_DIFFICULTIES, SP_LIGHT_COUNT, SP_HISTORY_WINDOW, SP_REPEAT_DECAY, SP_BUTT_AREA_WEIGHT, buildPunishmentAreas, pickWeightedValue, decayWeight, pickSpCardValue, countPool, computePunishmentCount, drawSpPunishment, halfPunishmentCount, SP_EXTRA_PENALTY_ITEMS, extraPenaltyTimeRange, drawExtraPenalty };
+window.SP_POOL = { SP_TOOLS, SP_TOOL_NAMES, SP_TOOL_COEFF, SP_POSES, SP_DIFFICULTIES, SP_LIGHT_COUNT, SP_HISTORY_WINDOW, SP_REPEAT_DECAY, SP_BUTT_AREA_WEIGHT, SP_POOL_FILTER_KEY, buildPunishmentAreas, SP_AREAS, readSpPoolFilter, saveSpPoolFilter, getFilteredSpTools, getFilteredSpPoses, getFilteredSpAreas, pickWeightedValue, decayWeight, pickSpCardValue, countPool, computePunishmentCount, drawSpPunishment, halfPunishmentCount, SP_EXTRA_PENALTY_ITEMS, extraPenaltyTimeRange, drawExtraPenalty };
 })();

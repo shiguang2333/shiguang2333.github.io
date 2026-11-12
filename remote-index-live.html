@@ -1118,7 +1118,7 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
     </div>
 
 <!-- 卡池与抽取逻辑来自 sp-pool.js（源：src/data/sp-pool.js，由 tools/build-sp-pool.mjs 生成）。 -->
-<script src="./sp-pool.js?v=16"></script>
+<script src="./sp-pool.js?v=17"></script>
 <script>
         // 工具系数与卡池统一取自 sp-pool.js，勿在本文件内另建池子。
         (function renderRuleCoefficients() {
@@ -1622,9 +1622,9 @@ body.sp-result-mode .result-card .content .front .front-content { border-radius:
 
         function getPool(index) {
             if (index === 2) return SP_POOL.countPool(state.diff);
-            if (index === 0) return [...SP_POOL.SP_TOOL_NAMES];
-            if (index === 1) return [...SP_POOL.SP_POSES];
-            return SP_POOL.buildPunishmentAreas(state.results[1], state.results[0]);
+            if (index === 0) return SP_POOL.getFilteredSpTools();
+            if (index === 1) return SP_POOL.getFilteredSpPoses();
+            return SP_POOL.getFilteredSpAreas(state.results[1], state.results[0]);
         }
 
         async function cardClick(index) {
