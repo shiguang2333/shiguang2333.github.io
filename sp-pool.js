@@ -212,5 +212,5 @@ function drawExtraPenalty({ difficultyKey = 'light' } = {}) {
   return { item: item.name, minutes, summary: `${item.name} ${minutes} 分钟` }
 }
 
-window.SP_POOL = { SP_TOOLS, SP_TOOL_NAMES, SP_TOOL_COEFF, SP_POSES, SP_DIFFICULTIES, SP_LIGHT_COUNT, SP_HISTORY_WINDOW, SP_REPEAT_DECAY, SP_BUTT_AREA_WEIGHT, SP_POOL_FILTER_KEY, buildPunishmentAreas, SP_AREAS, readSpPoolFilter, saveSpPoolFilter, getFilteredSpTools, getFilteredSpPoses, getFilteredSpAreas, pickWeightedValue, decayWeight, pickSpCardValue, countPool, computePunishmentCount, drawSpPunishment, halfPunishmentCount, SP_EXTRA_PENALTY_ITEMS, extraPenaltyTimeRange, drawExtraPenalty };
+window.SP_POOL = { SP_TOOLS, SP_TOOL_NAMES, SP_POSES, SP_DIFFICULTIES, SP_LIGHT_COUNT, SP_HISTORY_WINDOW, SP_AREAS, readSpPoolFilter, saveSpPoolFilter, getFilteredSpTools, getFilteredSpPoses, getFilteredSpAreas, pickSpCardValue, countPool, computePunishmentCount, drawSpPunishment, halfPunishmentCount, SP_EXTRA_PENALTY_ITEMS, extraPenaltyTimeRange, drawExtraPenalty };
 })();
