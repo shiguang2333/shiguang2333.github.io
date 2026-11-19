@@ -1569,6 +1569,7 @@ input, textarea {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 .summary-actions > .gold-button { width: 100%; }
+.summary-actions > .ghost-button { width: 100%; }
 .summary-privacy {
   margin: 2px 0 0;
   color: #5f5a55;

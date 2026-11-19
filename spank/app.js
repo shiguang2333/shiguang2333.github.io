@@ -176,6 +176,7 @@
   const summaryTitle = byId('summaryTitle');
   const summaryViewButtons = [...document.querySelectorAll('[data-summary-view]')];
   const exportImageBtn = byId('exportImageBtn');
+  const exportToCommentsBtn = byId('exportToCommentsBtn');
   const resetModal = byId('resetModal');
   const confirmReset = byId('confirmReset');
   const resetBtn = byId('resetBtn');
@@ -1327,6 +1328,7 @@
     summaryContent.innerHTML = html;
     const hasContent = totalItems > 0 || Boolean(hardLimits) || Boolean(preferences);
     exportImageBtn.disabled = !hasContent;
+    exportToCommentsBtn.disabled = !hasContent;
     summaryContent.scrollTop = 0;
     requestAnimationFrame(updateSummaryScrollHint);
   }
@@ -1451,7 +1453,55 @@
     }
   }
 
-  function exportSummaryImage() {
+  function buildSummaryCardData() {
+    const groups = collectSummary();
+    const genderGroup = groups.find((group) => group.cat.id === GENDER_CAT_ID);
+    const contentGroups = groups.filter((group) => group.cat.id !== GENDER_CAT_ID);
+    const identity = genderGroup
+      ? genderGroup.chosen.map(({ item }) => (genderGroup.cat.input === 'dual'
+        ? { text: item.name, key: item.groupLabel, color: summaryIdentColor(item) }
+        : { text: summaryItemLabel(genderGroup.cat, item), key: '', color: '#d2ae72' }))
+      : [];
+    return {
+      version: shortVersion,
+      filledSteps: contentGroups.length,
+      totalGroups: summaryTotalGroups(),
+      totalItems: groups.reduce((sum, group) => sum + group.chosen.length, 0),
+      identity,
+      sections: contentGroups.map(({ cat, chosen }) => ({
+        title: cat.title,
+        accent: cat._accent || '#d2ae72',
+        count: chosen.length,
+        items: chosen.map(({ item, level }) => ({
+          text: summaryItemLabel(cat, item),
+          tag: cat.input === 'bottle' ? LEVEL_LABELS[level] : '',
+        })),
+      })),
+      hardLimits: summaryHardLimits(),
+      preferences: summaryPreferences(),
+    };
+  }
+
+  function exportSummaryToComments() {
+    const data = buildSummaryCardData();
+    if (!data.identity.length && !data.sections.length && !data.hardLimits && !data.preferences) {
+      showToast('还没有填写任何项目');
+      return;
+    }
+    try {
+      sessionStorage.setItem('nocturne_comment_attachment', JSON.stringify({ type: 'spank', data, channel: 'social' }));
+    } catch {
+      showToast('暂存失败，请重试');
+      return;
+    }
+    window.location.assign(new URL('../comments.html?channel=social', window.location.href).href);
+  }
+
+  function exportSummaryImage(mode = 'download') {
+    if (mode === 'comments') {
+      exportSummaryToComments();
+      return;
+    }
     const groups = collectSummary();
     const filledSteps = groups.filter((group) => group.cat.id !== GENDER_CAT_ID).length;
     const hardLimits = summaryHardLimits();
@@ -1919,6 +1969,9 @@
 
     exportImageBtn.addEventListener('click', () => {
       exportSummaryImage();
+    });
+    exportToCommentsBtn.addEventListener('click', () => {
+      exportSummaryImage('comments');
     });
     confirmReset.addEventListener('click', resetCard);
 

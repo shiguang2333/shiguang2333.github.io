@@ -1,0 +1,1 @@
+var e=`nocturne_roleplay_unlocked`;function t(){try{return sessionStorage.getItem(e)===`1`}catch{return!1}}function n(t){if(t!==`shiguang2333`)return!1;try{sessionStorage.setItem(e,`1`)}catch{}return!0}export{n,t};
