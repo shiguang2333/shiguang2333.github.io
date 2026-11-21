@@ -1597,7 +1597,7 @@
     }
 
     const footerY = y + 8;
-    const siteUrl = 'shiguang2333.github.io';
+    const siteUrl = 'shiguang2333.xyz · shiguang2333.github.io';
     const height = footerY + 76 + margin;
 
     const canvas = document.createElement('canvas');
